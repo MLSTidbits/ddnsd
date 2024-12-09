@@ -1,0 +1,36 @@
+#!/bin/env bash
+
+_ddns_complete() {
+    local cur prev commands duck_options cloudflare_options
+    cur="${COMP_WORDS[COMP_CWORD]}"
+
+    # shellcheck disable=SC2034
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    # Main commands
+    commands="duck cloudflare help version"
+
+    # Options for each command
+    duck_options="-d --domain -t --token -k --insecure -v --verbose -s --service -D --disable -h --help"
+    cloudflare_options="-e --email -m --method -k --key -z --zone -d --domain -p --proxy -K --keep -s \
+        --service -D --disable -h --help"
+
+    # Handle completions based on the current command
+
+    # shellcheck disable=SC1009
+    # shellcheck disable=SC2207
+    case "${COMP_WORDS[1]}" in
+        duck            )   COMPREPLY=( $(compgen -W "${duck_options}" -- "$cur") )       ;;
+        cloudflare      )   COMPREPLY=( $(compgen -W "${cloudflare_options}" -- "$cur") ) ;;
+        help | version  )   COMPREPLY=()                                                  ;;
+        *)
+            # Default to completing the main commands
+            if [[ "$COMP_CWORD" -eq 1 ]]; then
+                COMPREPLY=( $(compgen -W "${commands}" -- "$cur") )
+            fi
+        ;;
+    esac
+}
+
+# Register the completion function for ddns
+complete -F _ddns_complete ddns

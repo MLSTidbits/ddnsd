@@ -284,7 +284,8 @@ EOF
 helpDuck="$(cat <<EOF
 Usage: ddns duck [options] |args|
 
-${commandList}
+Command:
+    duck                            Update dynamic DNS record using DuckDNS
 
 Options:
     -d, --domain <domain>           Domain name that you setup on DuckDNS
@@ -300,7 +301,8 @@ EOF
 helpCloudflare="$(cat <<EOF
 Usage: ddns cloudflare [options] |args|
 
-${commandList}
+Command:
+    cloudflare                      Update dynamic DNS record using Cloudflare
 
 Options:
     -e, --email <email>             Email address that you use to login to Cloudflare

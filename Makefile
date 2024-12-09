@@ -14,6 +14,7 @@ all: install
 # Install the bash script
 install:
 	install -m 755 $(SOURCE_PATH)/$(APP_NAME) $(INSTALL_PATH)
+	install -m 644 $(SOURCE_PATH)/$(APP_NAME)-completion /etc/bash_completion.d/$(APP_NAME)
 
 # Clean up build files (if any)
 clean:
