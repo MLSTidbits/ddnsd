@@ -19,3 +19,4 @@ install:
 # Clean up build files (if any)
 clean:
 	rm -fv $(INSTALL_PATH)/$(APP_NAME)
+	rm -fv /etc/bash_completion.d/$(APP_NAME)
