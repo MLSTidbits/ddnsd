@@ -1,5 +1,12 @@
 #!/bin/env bash
 
+# ddns Copyright (c) 2024 by <mschaecher78@gmail.com> Michael L. Schaecher - MIT License
+
+# ddns is used to update dns records on DuckDNS and Cloudflare using their respective APIs
+# causing them both to be dynamic DNS providers.
+
+# For more information on DuckDNS visit https://www.duckdns.org
+
 function rootcheck () {
 
     # Check if the script is run as root
