@@ -14,14 +14,15 @@ function rootcheck () {
 
 }
 
+function eventlog () { logger -t "DDNS: " "${@}" ; }
+
 function duckdns () {
 
     shift 1
 
     # Store the command line arguments in local variables
-    local logFile duckURL domainName apiToken setVerbose allowInsecure
+    local duckURL domainName apiToken setVerbose allowInsecure
 
-    logFile="/var/log/ddns.log"
     duckURL="https://www.duckdns.org/update?domains"
 
     domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
@@ -47,7 +48,7 @@ function duckdns () {
 
     # Check if the domain name and API token are set
     if test -z "${domainName}" || test -z "${apiToken}" ; then
-        logger "ddns: Domain name and API token are required" ; exit 1
+        eventlog "Domain Name and/or API token are required" ; exit 1
     fi
 
     # Check if the verbose flag is set
@@ -55,7 +56,7 @@ function duckdns () {
 
     # DuckDDNS allows insecure connections by default, this can be a problem when using with
     # OpenVPN or WireGuard.
-    test "${allowInsecure}" = "true" && setInsecure="-k"
+    test "${allowInsecure}" = "true" && { setInsecure="-k" ; eventlog "Warning: Insecure connections allowed" ; }
 
     if test "${runDaemon}" = "true" ; then
 
@@ -72,17 +73,15 @@ function duckdns () {
     fi
 
     # Check if systemd ddns timer is enabled
-    echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl "${setInsecure}" -o "${logFile}" -K -
+    echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl "${setInsecure}" -K -
 
     case "$(cat /var/log/ddns.log)" in
         OK* )
-            logger "ddns: DuckDNS record updated for subdomain ${domainName}"
-            unset logFile duckURL domainName apiToken setVerbose
+            eventlog "DuckDNS record updated for subdomain ${domainName}"
             exit 0
         ;;
         KO* )
-            logger "ddns: Unable to update DuckDNS record for subdomain ${domainName}"
-            unset logFile duckURL domainName apiToken setVerbose
+            eventlog "Unable to update DuckDNS record for subdomain ${domainName}"
             exit 1
         ;;
     esac
@@ -102,6 +101,9 @@ function cloudflareddns () {
 
     domainName="" ; apiToken="" ; userEmail="" ; methodType="token" ; zoneID=""
 
+    # Test if IP Address is empty
+    test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
+
     case "${1}" in
         -h | --help         ) echo "${helpCloudflare}" ; exit 0 ;;
     esac
@@ -118,10 +120,8 @@ function cloudflareddns () {
 
             # Only accept numbers ranging from 1 to 3600
             if ! echo "${2}" | grep -qE "^[1-9][0-9]{0,3}$" ; then
-                logger "ddns: Invalid keep alive time" ; exit 1
+                eventlog "Invalid keep alive time, reverting to default 1h" ; exit 1
             fi
-
-            keepAlive="${2}" ;
 
             shift 2
 
@@ -136,17 +136,17 @@ function cloudflareddns () {
 
     # Check if email is valid
     if ! echo "${userEmail}" | grep -qE "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" ; then
-        logger "ddns: Invalid email address" ; exit 1
+        eventlog "Invalid email address" ; exit 1
     fi
 
     # The api token is required
-    if test -z "${apiToken}" ; then logger "ddns: API token is required" ; exit 1 ; fi
+    if test -z "${apiToken}" ; then eventlog "API token is required" ; exit 1 ; fi
 
     # Check if the domain name is set
-    if test -z "${domainName}" ; then logger "ddns: Domain name is required" ; exit 1 ; fi
+    if test -z "${domainName}" ; then eventlog "domain name is required" ; exit 1 ; fi
 
     # Check if the zone ID is set
-    if test -z "${zoneID}" ; then logger "ddns: Zone ID is required" ; exit 1 ; fi
+    if test -z "${zoneID}" ; then eventlog "Zone ID is required" ; exit 1 ; fi
 
     # Check if method is either token or global
     if test "${methodType}" = "token" ; then
@@ -154,7 +154,7 @@ function cloudflareddns () {
     elif test "${methodType}" = "global" ; then
         authHeader="X-Auth-Key"
     else
-        logger "ddns: Invalid method type" ; exit 1
+        eventlog "Invalid method type" ; exit 1
     fi
 
     # Check if the api key is active
@@ -165,10 +165,10 @@ function cloudflareddns () {
 
     case "${verifyKey}" in
         *\"success\":true* )
-            logger "ddns: Cloudflare API ${apiToken} is active"
+            eventlog "Cloudflare API ${apiToken} is active"
         ;;
         *\"success\":false* )
-            logger "ddns: Cloudflare API ${apiToken} is not active" ; exit 1
+            eventlog "Cloudflare API ${apiToken} is not active" ; exit 1
         ;;
     esac
 
@@ -193,7 +193,7 @@ function cloudflareddns () {
 
     recordIdent="$(echo "${getRecord}" | sed -E 's/.*"id":"([A-Za-z0-9_]+)".*/\1/')"
 
-    if test -z "${recordIdent}" ; then logger "ddns: Unable to get DNS record identity" ; exit 1 ; fi
+    if test -z "${recordIdent}" ; then eventlog "Unable to get DNS record identity" ; exit 1 ; fi
 
     # Update the DNS record and or settings on Cloudflare
     recordUpdate="$(curl -s -X PATCH "${cloudflareURL}/${zoneID}/dns_records/${recordIdent}" \
@@ -210,13 +210,11 @@ function cloudflareddns () {
 
     case "${recordUpdate}" in
         *\"success\":true* )
-            logger "ddns: Cloudflare DNS record updated for ${domainName} now pointing to ${ipAddress}"
-            unset userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepAlive
+            eventlog "Cloudflare DNS record updated for ${domainName} now pointing to ${ipAddress}"
             exit 0
         ;;
         *\"success\":false* )
-            logger "ddns: Unable to update Cloudflare DNS record for ${domainName}"
-            unset userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepAlive
+            eventlog "Unable to update Cloudflare DNS record for ${domainName}"
             exit 1
         ;;
     esac
@@ -288,7 +286,7 @@ Command:
     duck                            Update dynamic DNS record using DuckDNS
 
 Options:
-    -d, --domain <domain>           Domain name that you setup on DuckDNS
+    -d, --domain <domain>           domain name that you setup on DuckDNS
     -t, --token <token>             API token that you get from DuckDNS
     -k, --insecure <true|false>     Allow insecure connections. The default is false
     -v, --verbose  <true|false>     Show more information. The default is false
@@ -309,7 +307,7 @@ Options:
     -m, --method <token|global>     The method to use to authenticate with Cloudflare
     -k, --key <key>                 API token that you get from Cloudflare
     -z, --zone <zone>               The zone ID that you get from Cloudflare
-    -d, --domain <domain>           Domain name that you setup on Cloudflare
+    -d, --domain <domain>           domain name that you setup on Cloudflare
     -p, --proxy <true|false>        Enable or disable the Cloudflare proxy. The default is false
     -K, --keep <number>             The time in seconds to keep the DNS record alive. The default is 3600
     -s, --service                   Enable the ddns service to run as a daemon
