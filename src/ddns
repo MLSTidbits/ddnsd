@@ -21,8 +21,9 @@ function duckdns () {
     shift 1
 
     # Store the command line arguments in local variables
-    local duckURL domainName apiToken setVerbose allowInsecure
+    local duckdnslog duckURL domainName apiToken setVerbose allowInsecure
 
+    duckdnslog="/var/log/ddns.log"
     duckURL="https://www.duckdns.org/update?domains"
 
     domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
@@ -36,7 +37,7 @@ function duckdns () {
         -d | --domain       ) domainName="${2}"    ; shift 2 ;;
         -t | --token        ) apiToken="${2}"      ; shift 2 ;;
         -v | --verbose      ) setVerbose="${2}"    ; shift 2 ;;
-        -k | --insecure     ) allowInsecure="${2}" ; shift 2 ;;
+        -k | --insecure     ) allowInsecure="true" ; shift   ;;
         -s | --service      ) runDaemon="true"     ; shift   ;;
         -D | --disable      )
             systemctl disable --now ddns.timer
@@ -54,10 +55,6 @@ function duckdns () {
     # Check if the verbose flag is set
     if test "${setVerbose}" = "true" || test "${setVerbose}" = "" ; then setVerbose="false" ; fi
 
-    # DuckDDNS allows insecure connections by default, this can be a problem when using with
-    # OpenVPN or WireGuard.
-    test "${allowInsecure}" = "true" && { setInsecure="-k" ; eventlog "Warning: Insecure connections allowed" ; }
-
     if test "${runDaemon}" = "true" ; then
 
         dnsProvider="DuckDNS"
@@ -72,10 +69,14 @@ function duckdns () {
 
     fi
 
-    # Check if systemd ddns timer is enabled
-    echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl "${setInsecure}" -K -
+    if test "${allowInsecure}" = "true" ; then
+        echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl -kK -
+        eventlog "WARNING: Insecure connection to DuckDNS"
+    else
+        echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl -K -
+    fi
 
-    case "$(cat /var/log/ddns.log)" in
+    case "$(cat ${duckdnslog})" in
         OK* )
             eventlog "DuckDNS record updated for subdomain ${domainName}"
             exit 0
