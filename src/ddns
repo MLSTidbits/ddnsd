@@ -18,7 +18,7 @@ function eventlog () { logger -t "DDNS: " "${@}" ; }
 
 function duckdns () {
 
-    shift 1
+    whatCommand="${*}" ; shift 1
 
     # Store the command line arguments in local variables
     local duckdnslog duckURL domainName apiToken setVerbose allowInsecure
@@ -27,25 +27,34 @@ function duckdns () {
     duckURL="https://www.duckdns.org/update?domains"
 
     domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
-
-    case "${1}" in
-        -h | --help         ) echo "${helpDuck}" ; exit 0 ;;
-    esac
-
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
         -d | --domain       ) domainName="${2}"    ; shift 2 ;;
         -t | --token        ) apiToken="${2}"      ; shift 2 ;;
         -v | --verbose      ) setVerbose="${2}"    ; shift 2 ;;
         -k | --insecure     ) allowInsecure="true" ; shift   ;;
-        -s | --service      ) runDaemon="true"     ; shift   ;;
+        -s | --service      )
+            setCommand="/usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
+            dnsProvider="DuckDNS"
+
+            createService
+
+            if ! systemctl is-enabled ddns.timer ; then
+                systemctl enable --now ddns.timer
+            else
+                systemctl daemon-reload
+            fi
+
+            shift
+        ;;
         -D | --disable      )
-            systemctl disable --now ddns.timer
-            rm -vf /usr/lib/systemd/system/ddns.*
-            exit 0
+            if systemctl is-enabled ddns.timer ; then
+                systemctl disable --now ddns.timer
+                rm -vf /usr/lib/systemd/system/ddns.*
+            fi
         ;;
         *                   ) break                          ;;
-    esac ; if test -z "${1}" ; then break ; fi ; done
+    esac ; done
 
     # Check if the domain name and API token are set
     if test -z "${domainName}" || test -z "${apiToken}" ; then
@@ -54,20 +63,6 @@ function duckdns () {
 
     # Check if the verbose flag is set
     if test "${setVerbose}" = "true" || test "${setVerbose}" = "" ; then setVerbose="false" ; fi
-
-    if test "${runDaemon}" = "true" ; then
-
-        dnsProvider="DuckDNS"
-        setCommand="/usr/bin/ddns duck -d ${domainName} -t ${apiToken} -v ${setVerbose}"
-        createService
-
-        if ! systemctl is-enabled ddns.timer ; then
-            systemctl enable --now ddns.timer
-        else
-            systemctl daemon-reload
-        fi
-
-    fi
 
     if test "${allowInsecure}" = "true" ; then
         echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl -kK -
@@ -105,10 +100,6 @@ function cloudflareddns () {
     # Test if IP Address is empty
     test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
 
-    case "${1}" in
-        -h | --help         ) echo "${helpCloudflare}" ; exit 0 ;;
-    esac
-
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
         -e | --email        ) userEmail="${2}"  ; shift 2   ;;
@@ -127,13 +118,26 @@ function cloudflareddns () {
             shift 2
 
         ;;
-        -s | --service      ) runDaemon="true"  ; shift     ;;
-        -D | --disable      )
-            systemctl disable --now ddns.timer
-            rm -vf /usr/lib/systemd/system/ddns.*
-            exit 0
+        -s | --service      )
+            setCommand="/usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
+            dnsProvider="Cloudflare" ; createService
+
+            if ! systemctl is-enabled ddns.timer ; then
+                systemctl enable --now ddns.timer
+            else
+                systemctl daemon-reload
+            fi
+
+            shift
         ;;
-    esac ; if test -z "${1}" ; then break ; fi ; done
+        -D | --disable      )
+            if systemctl is-enabled ddns.timer ; then
+                systemctl disable --now ddns.timer
+                rm -vf /usr/lib/systemd/system/ddns.*
+            fi
+        ;;
+        *                   ) break                          ;;
+    esac ; done
 
     # Check if email is valid
     if ! echo "${userEmail}" | grep -qE "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" ; then
@@ -172,20 +176,6 @@ function cloudflareddns () {
             eventlog "Cloudflare API ${apiToken} is not active" ; exit 1
         ;;
     esac
-
-    if test "${runDaemon}" = "true" ; then
-
-        dnsProvider="Cloudflare"
-        setCommand="/usr/bin/ddns cloudflare -e ${userEmail} -k ${apiToken} -z ${zoneID} -d ${domainName} -p ${ifProxy} -K ${keepAlive}"
-        createService
-
-        if ! systemctl is-enabled ddns.timer ; then
-            systemctl enable --now ddns.timer
-        else
-            systemctl daemon-reload
-        fi
-
-    fi
 
     getRecord=$(curl -s -X GET "${cloudflareURL}/${zoneID}{/dns_records?type=A&name=${domainName}}" \
         --header "X-Auth-Email: ${userEmail}" \
@@ -311,7 +301,8 @@ Options:
     -d, --domain <domain>           domain name that you setup on Cloudflare
     -p, --proxy <true|false>        Enable or disable the Cloudflare proxy. The default is false
     -K, --keep <number>             The time in seconds to keep the DNS record alive. The default is 3600
-    -s, --service                   Enable the ddns service to run as a daemon
+    -s, --service                   Enable either DuckDNS or Cloudflare* to run as a Systemd Timer (Daemon).
+                                    Enabling this for OpenVPN or WireGuard server is recommended.
     -D, --disable                   Disable the ddns service
     -h, --help                      Show this help message
 
@@ -320,9 +311,9 @@ EOF
 )"
 
 case "${1}" in
-    "duck"          ) duckdns "${@}"                                       ;;
-    "cloudflare"    ) cloudflareddns "${@}"                                ;;
-    "help"          ) echo "${helpMain}" ; exit 0                          ;;
-    "version"       ) echo "${versionInfo}" ; exit 0                       ;;
-    *               ) echo "Invalid command" ; echo "${helpMain}" ; exit 1 ;;
+    "duck"          ) case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ; duckdns "${@}"        ;;
+    "cloudflare"    ) case "${2}" in -h | --help ) echo "${helpCloudflare}" ; exit 0 ; esac ; cloudflareddns "${@}" ;;
+    "help"          ) echo "${helpMain}"                                    ; exit 0                                ;;
+    "version"       ) echo "${versionInfo}"                                 ; exit 0                                ;;
+    *               ) echo "Invalid command"                                ; exit 1                                ;;
 esac
