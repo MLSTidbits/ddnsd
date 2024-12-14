@@ -102,11 +102,11 @@ function cloudflareddns () {
 
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
+        -d | --domain       ) domainName="${2}" ; shift 2   ;;
+        -t | --token        ) apiToken="${2}"   ; shift 2   ;;
         -e | --email        ) userEmail="${2}"  ; shift 2   ;;
         -m | --method       ) methodType="${2}" ; shift 2   ;;
-        -k | --key          ) apiToken="${2}"   ; shift 2   ;;
         -z | --zone         ) zoneID="${2}"     ; shift 2   ;;
-        -d | --domain       ) domainName="${2}" ; shift 2   ;;
         -p | --proxy        ) ifProxy="${2}"    ; shift 2   ;;
         -K | --keep         )
 
@@ -135,6 +135,8 @@ function cloudflareddns () {
                 systemctl disable --now ddns.timer
                 rm -vf /usr/lib/systemd/system/ddns.*
             fi
+
+            shift
         ;;
         *                   ) break                          ;;
     esac ; done
@@ -295,10 +297,10 @@ Command:
 
 Options:
     -e, --email <email>             Email address that you use to login to Cloudflare
-    -m, --method <token|global>     The method to use to authenticate with Cloudflare
-    -k, --key <key>                 API token that you get from Cloudflare
-    -z, --zone <zone>               The zone ID that you get from Cloudflare
     -d, --domain <domain>           domain name that you setup on Cloudflare
+    -t, --token <key>               API token that you get from Cloudflare
+    -z, --zone <zone>               The zone ID that you get from Cloudflare
+    -m, --method <token|global>     The method to use to authenticate with Cloudflare
     -p, --proxy <true|false>        Enable or disable the Cloudflare proxy. The default is false
     -K, --keep <number>             The time in seconds to keep the DNS record alive. The default is 3600
     -s, --service                   Enable either DuckDNS or Cloudflare* to run as a Systemd Timer (Daemon).
