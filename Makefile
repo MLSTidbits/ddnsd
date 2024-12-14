@@ -46,3 +46,7 @@ uninstall:
 	rm -f /etc/bash_completion.d/$(APP_NAME)
 	rm -rf /usr/share/man/man8/$(APP_NAME).8
 	rm -rf /usr/share/$(APP_NAME)
+
+clean:
+	rm -f $(SOURCE_PATH)/$(APP_NAME).8
+	rm -f $(SOURCE_PATH)/$(APP_NAME).8.gz

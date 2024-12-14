@@ -30,8 +30,10 @@ cd ddns ; sudo make install
 To uninstall the script run:
 
 ```bash
-sudo make clean
+sudo make uninstall
 ```
+
+To clean up the repository run `make clean`.
 
 ## Setting Systemd Timer
 
