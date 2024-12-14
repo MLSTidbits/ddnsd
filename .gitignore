@@ -1,2 +1,6 @@
 .vscode/
 .markdownlint.yaml
+
+# Ignore transpiled markdown files
+*.8
+*.8.gz
