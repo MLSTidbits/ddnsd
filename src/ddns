@@ -87,15 +87,18 @@ function cloudflareddns () {
 
     shift 1
 
-    local userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepAlive
+    local userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepFor arrayKeepFor
 
     cloudflareURL="https://api.cloudflare.com/client/v4/zones"
     ifProxy="false"
-    keepAlive="3600"
+    keepFor="300"
+    methodType="token"
 
     ipAddress="$(curl -s https://icanhazip.com)"
 
-    domainName="" ; apiToken="" ; userEmail="" ; methodType="token" ; zoneID=""
+    arrayKeepFor=( 60 120 300 900 1800 3600 43600 86400 )
+
+    domainName="" ; apiToken="" ; userEmail="" ; zoneID=""
 
     # Test if IP Address is empty
     test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
@@ -110,12 +113,10 @@ function cloudflareddns () {
         -p | --proxy        ) ifProxy="${2}"    ; shift 2   ;;
         -K | --keep         )
 
-            # Only accept numbers ranging from 1 to 3600
-            if ! echo "${2}" | grep -qE "^[1-9][0-9]{0,3}$" ; then
-                eventlog "Invalid keep alive time, reverting to default 1h" ; exit 1
-            fi
-
-            shift 2
+            case "${arrayKeepFor[@]}" in
+                *"${2}"* ) keepFor="${2}" ; shift 2 ;;
+                *        ) eventlog "Invalid keep alive time" ; exit 1 ;;
+            esac
 
         ;;
         -s | --service      )
@@ -197,7 +198,7 @@ function cloudflareddns () {
             \"type\": \"A\",
             \"name\": \"${domainName}\",
             \"content\": \"$ipAddress\",
-            \"ttl\": ${keepAlive},
+            \"ttl\": ${keepFor},
             \"proxied\": ${ifProxy}
         }")"
 
