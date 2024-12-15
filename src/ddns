@@ -149,12 +149,10 @@ function cloudflareddns () {
         ;;
     esac
 
-    getRecord=$(curl -s -X GET "${cloudflareURL}/${zoneID}{/dns_records?type=A&name=${domainName}}" \
+    recordIdent=$(curl -s -X GET "${cloudflareURL}/${zoneID}{/dns_records?type=A&name=${domainName}}" \
         --header "X-Auth-Email: ${userEmail}" \
         --header "${authHeader} ${apiToken}" \
-        --header "Content-Type: application/json")
-
-    recordIdent="$(echo "${getRecord}" | sed -E 's/.*"id":"([A-Za-z0-9_]+)".*/\1/')"
+        --header "Content-Type: application/json" | jq -r '.result[].id')
 
     if test -z "${recordIdent}" ; then eventlog "Unable to get DNS record identity" ; exit 1 ; fi
 

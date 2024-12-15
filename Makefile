@@ -16,6 +16,14 @@ all: install
 # Install the bash script
 install:
 
+# Check if jq is installed
+ifeq ($(shell which jq > /dev/null 2>&1; echo $$?), 1)
+	@echo "jq is not installed. Please install it to continue."
+	@exit 1
+else
+	@echo "jq is installed."
+endif
+
 ifeq ($(MANPAGE),y)
 # Check if pandoc is installed
 	@which pandoc > /dev/null || { echo "Pandoc is not installed. Please install it to generate" ; exit 1; }
@@ -46,3 +54,7 @@ uninstall:
 	rm -f /etc/bash_completion.d/$(APP_NAME)
 	rm -rf /usr/share/man/man8/$(APP_NAME).8
 	rm -rf /usr/share/$(APP_NAME)
+
+clean:
+	@rm -vf $(SOURCE_PATH)/$(APP_NAME).8.gz
+	@rm -vf $(SOURCE_PATH)/$(APP_NAME).8
