@@ -52,7 +52,7 @@ endif
 uninstall:
 	rm -f $(INSTALL_PATH)/$(APP_NAME)
 	rm -f /etc/bash_completion.d/$(APP_NAME)
-	rm -rf /usr/share/man/man8/$(APP_NAME).8
+	rm -rf /usr/share/man/man8/$(APP_NAME).8.gz
 	rm -rf /usr/share/$(APP_NAME)
 
 clean:
