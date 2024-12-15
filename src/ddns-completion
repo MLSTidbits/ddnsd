@@ -8,7 +8,7 @@ _ddns_complete() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main commands
-    commands="duck cloudflare help version"
+    commands="duck cloudflare disable help version"
 
     # Options for each command
     duck_options="-d --domain -t --token -k --insecure -v --verbose -s --service -D --disable -h --help"
@@ -17,7 +17,6 @@ _ddns_complete() {
 
     # Handle completions based on the current command
 
-    # shellcheck disable=SC1009
     # shellcheck disable=SC2207
     case "${COMP_WORDS[1]}" in
         duck            )   COMPREPLY=( $(compgen -W "${duck_options}" -- "$cur") )       ;;
