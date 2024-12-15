@@ -32,7 +32,7 @@ ifeq ($(MANPAGE),y)
 
 endif
 
-	install -d /usr/share/$(APP_NAME)
+	install -d /usr/share//doc/$(APP_NAME)
 
 	install -m 755 ./VERSION /usr/share/doc/$(APP_NAME)/version
 	install -m 755 ./COPYING /usr/share/doc/$(APP_NAME)/license
