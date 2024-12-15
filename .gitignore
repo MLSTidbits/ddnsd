@@ -2,5 +2,5 @@
 .markdownlint.yaml
 
 # Ignore transpiled markdown files
-*.8
+ddns.8
 *.8.gz

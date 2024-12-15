@@ -34,8 +34,8 @@ endif
 
 	install -d /usr/share/$(APP_NAME)
 
-	install -m 755 ./VERSION /usr/share/$(APP_NAME)/version
-	install -m 755 ./COPYING /usr/share/$(APP_NAME)/license
+	install -m 755 ./VERSION /usr/share/doc/$(APP_NAME)/version
+	install -m 755 ./COPYING /usr/share/doc/$(APP_NAME)/license
 
 	install -m 755 $(SOURCE_PATH)/$(APP_NAME) $(INSTALL_PATH)
 	install -m 644 $(SOURCE_PATH)/$(APP_NAME)-completion /etc/bash_completion.d/$(APP_NAME)
