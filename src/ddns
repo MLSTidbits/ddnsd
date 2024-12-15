@@ -239,7 +239,7 @@ function disableService () {
 set -eo pipefail
 
 appName="ddns"
-version="0.1.0"
+version="$(cat /usr/share/doc/${appName}/version)"
 license="MIT License"
 
 versionInfo="${appName} Version: ${version} - License: ${license}"
