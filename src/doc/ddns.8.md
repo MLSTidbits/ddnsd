@@ -28,6 +28,9 @@ ddns - Dynamic DNS (Domain Name System) client
 **cloudflare** [*options*] *<args>* ...
 :   Update a Cloudflare domain.
 
+**disable**
+:   Disable the Systemd Timer for updating the DNS record.
+
 **help**
 :   Show brief help message.
 

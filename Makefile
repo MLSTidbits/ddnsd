@@ -5,7 +5,7 @@ SOURCE_PATH = src
 INSTALL_PATH = /usr/bin
 APP_NAME = ddns
 
-MANPAGE = no
+MANPAGE = n
 
 # Phony targets
 .PHONY: install clean
@@ -16,7 +16,7 @@ all: install
 # Install the bash script
 install:
 
-ifeq ($(MANPAGE),yes)
+ifeq ($(MANPAGE),y)
 # Check if pandoc is installed
 	@which pandoc > /dev/null || { echo "Pandoc is not installed. Please install it to generate" ; exit 1; }
 

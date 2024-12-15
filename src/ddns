@@ -18,15 +18,18 @@ function eventlog () { logger -t "DDNS: " "${@}" ; }
 
 function duckdns () {
 
-    whatCommand="${*}" ; shift 1
-
     # Store the command line arguments in local variables
     local duckdnslog duckURL domainName apiToken setVerbose allowInsecure
+
+    whatCommand="${*}" ; shift 1
 
     duckdnslog="/var/log/ddns.log"
     duckURL="https://www.duckdns.org/update?domains"
 
     domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
+
+    dnsProvider="DuckDNS"
+
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
         -d | --domain       ) domainName="${2}"    ; shift 2 ;;
@@ -34,24 +37,7 @@ function duckdns () {
         -v | --verbose      ) setVerbose="${2}"    ; shift 2 ;;
         -k | --insecure     ) allowInsecure="true" ; shift   ;;
         -s | --service      )
-            setCommand="/usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
-            dnsProvider="DuckDNS"
-
-            createService
-
-            if ! systemctl is-enabled ddns.timer ; then
-                systemctl enable --now ddns.timer
-            else
-                systemctl daemon-reload
-            fi
-
-            shift
-        ;;
-        -D | --disable      )
-            if systemctl is-enabled ddns.timer ; then
-                systemctl disable --now ddns.timer
-                rm -vf /usr/lib/systemd/system/ddns.*
-            fi
+            createService ; enableService ; shift
         ;;
         *                   ) break                          ;;
     esac ; done
@@ -85,20 +71,22 @@ function duckdns () {
 
 function cloudflareddns () {
 
-    shift 1
-
     local userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepFor arrayKeepFor
 
     cloudflareURL="https://api.cloudflare.com/client/v4/zones"
     ifProxy="false"
     keepFor="300"
     methodType="token"
-
     ipAddress="$(curl -s https://icanhazip.com)"
+
+    whatCommand="${*}"
+    dnsProvider="Cloudflare"
 
     arrayKeepFor=( 60 120 300 900 1800 3600 43600 86400 )
 
     domainName="" ; apiToken="" ; userEmail="" ; zoneID=""
+
+    shift 1
 
     # Test if IP Address is empty
     test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
@@ -112,32 +100,13 @@ function cloudflareddns () {
         -z | --zone         ) zoneID="${2}"     ; shift 2   ;;
         -p | --proxy        ) ifProxy="${2}"    ; shift 2   ;;
         -K | --keep         )
-
             case "${arrayKeepFor[@]}" in
                 *"${2}"* ) keepFor="${2}" ; shift 2 ;;
                 *        ) eventlog "Invalid keep alive time" ; exit 1 ;;
             esac
-
         ;;
         -s | --service      )
-            setCommand="/usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
-            dnsProvider="Cloudflare" ; createService
-
-            if ! systemctl is-enabled ddns.timer ; then
-                systemctl enable --now ddns.timer
-            else
-                systemctl daemon-reload
-            fi
-
-            shift
-        ;;
-        -D | --disable      )
-            if systemctl is-enabled ddns.timer ; then
-                systemctl disable --now ddns.timer
-                rm -vf /usr/lib/systemd/system/ddns.*
-            fi
-
-            shift
+            createService ; enableService ; shift
         ;;
         *                   ) break                          ;;
     esac ; done
@@ -223,7 +192,7 @@ Description = Update dynamic DNS record for ${dnsProvider}
 
 [Service]
 Type = simple
-ExecStart = ${setCommand}
+ExecStart = /usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')
 
 [Install]
 WantedBy = multi-user.target
@@ -245,6 +214,28 @@ EOF
 
 }
 
+function enableService () {
+
+    if ! systemctl is-enabled ddns.timer ; then
+        systemctl enable --now ddns.timer
+    else
+        systemctl daemon-reload
+        systemctl restart ddns.timer
+    fi
+
+}
+
+function disableService () {
+
+    if systemctl is-enabled ddns.timer ; then
+        systemctl disable --now ddns.timer
+        rm -vf /usr/lib/systemd/system/ddns.*
+    else
+        eventlog "The ddns service is not enabled"
+    fi
+
+}
+
 set -eo pipefail
 
 appName="ddns"
@@ -257,6 +248,7 @@ commandList="$(cat <<EOF
 Commands:
     duck                            Update dynamic DNS record using DuckDNS
     cloudflare                      Update dynamic DNS record using Cloudflare
+    disable                         Disable the ddns service
     help                            Show this help message
     version                         Show the version of the script
 EOF
@@ -314,9 +306,16 @@ EOF
 )"
 
 case "${1}" in
-    "duck"          ) case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ; duckdns "${@}"        ;;
-    "cloudflare"    ) case "${2}" in -h | --help ) echo "${helpCloudflare}" ; exit 0 ; esac ; cloudflareddns "${@}" ;;
-    "help"          ) echo "${helpMain}"                                    ; exit 0                                ;;
-    "version"       ) echo "${versionInfo}"                                 ; exit 0                                ;;
-    *               ) echo "Invalid command"                                ; exit 1                                ;;
+    "duck"          )
+        case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ;
+        duckdns "${@}"
+    ;;
+    "cloudflare"    )
+        case "${2}" in -h | --help ) echo "${helpCloudflare}" ; exit 0 ; esac ;
+        cloudflareddns "${@}"
+    ;;
+    "disable"       ) disableService ; exit 0         ;;
+    "help"          ) echo "${helpMain}" ; exit 0     ;;
+    "version"       ) echo "${versionInfo}" ; exit 0  ;;
+    *               ) echo "Invalid command" ; exit 1 ;;
 esac
