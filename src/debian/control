@@ -1,0 +1,13 @@
+Source: ddns
+Section: utils
+Priority: optional
+Maintainer: Michael L. Schaecher <mschaecher78@gmail.com>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.6
+Homepage: https://github.com/MichaelSchaecher/ddns
+
+Package: ddns
+Architecture: all
+Depends: jq, curl
+Description: Dynamic DNS update script
+ A simple script to update DNS records for DuckDNS.org and CloudFlare.com

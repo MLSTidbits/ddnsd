@@ -1,5 +1,4 @@
-#!/bin/env bash
-
+# shellcheck disable=SC2148
 _ddns_complete() {
     local cur prev commands duck_options cloudflare_options
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -12,7 +11,7 @@ _ddns_complete() {
 
     # Options for each command
     duck_options="-d --domain -t --token -k --insecure -v --verbose -s --service -D --disable -h --help"
-    cloudflare_options="-e --email -m --method -k --key -z --zone -d --domain -p --proxy -K --keep -s \
+    cloudflare_options="-e --email -m --method -t --token -z --zone -d --domain -p --proxy -K --keep -s \
         --service -D --disable -h --help"
 
     # Handle completions based on the current command
