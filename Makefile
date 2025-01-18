@@ -53,7 +53,7 @@ BASH_COMPLETION = n
 all: build install
 
 debian:
-	make build
+	make build BASH_COMPLETION=y MANPAGE=y
 
 	@echo "Building debian package"
 
