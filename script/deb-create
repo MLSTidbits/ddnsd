@@ -34,12 +34,15 @@ set -e
 
 case "\${1}" in
     remove)
-        if systemctl is-active --quiet ddns.timer ; then
-            systemctl disable --now ddns.timer
+        if systemctl is-active --quiet ddns.service ; then
+            systemctl disable --now ddns.service
         fi
     ;;
+    failed-upgrade|abort-install|abort-upgrade|disappear)
+        # do nothing
+    ;;
     *)
-        echo "prerm called with unknown argument: $1" >&2
+        echo "prerm called with unknown argument: \$1" >&2
         exit 1
     ;;
 esac

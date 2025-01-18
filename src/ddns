@@ -16,6 +16,17 @@ function rootcheck () {
 
 function eventlog () { logger -t "DDNS: " "${@}" ; }
 
+function checkIpChange () {
+
+    test -f /var/tmp/ddns.ip || { echo "${ipAddress}" > /var/tmp/ddns.ip ; exit 0 ; }
+
+    if test -f /usr/lib/systemd/system/ddns.service ; then
+        test "$(cat /var/tmp/ddns.ip)" = "${ipAddress}" || {
+        eventlog "IP address has changed" ; echo "${ipAddress}" > /var/tmp/ddns.ip ; exit 0 ; }
+    fi
+
+}
+
 function duckdns () {
 
     # Store the command line arguments in local variables
@@ -184,49 +195,55 @@ function cloudflareddns () {
 
 function createService () {
 
-    cat <<EOF > "/usr/lib/systemd/system/ddns.service"
+cat <<EOF > "/usr/lib/systemd/system/ddns.service"
 [Unit]
 Description = Update dynamic DNS record for ${dnsProvider}
 
 [Service]
 Type = simple
 ExecStart = /usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')
+# Restart the service every 10 seconds.
+Restart = always
+RestartSec = 10
+# Output to syslog
+StandardOutput = syslog
+StandardError = syslog
 
 [Install]
 WantedBy = multi-user.target
 EOF
 
-    cat <<EOF > "/usr/lib/systemd/system/ddns.timer"
-[Unit]
-Description = Update dynamic DNS record for ${dnsProvider}
-Requires = network-online.target
+# cat <<EOF > "/usr/lib/systemd/system/ddns.timer"
+# [Unit]
+# Description = Update dynamic DNS record for ${dnsProvider}
+# Requires = network-online.target
 
-[Timer]
-OnCalendar = *:0/5
-Persistent = true
-RandomizedDelaySec = 2m
+# [Timer]
+# OnCalendar = *:0/5
+# Persistent = true
+# RandomizedDelaySec = 2m
 
-[Install]
-WantedBy = timers.target
-EOF
+# [Install]
+# WantedBy = timers.target
+# EOF
 
 }
 
 function enableService () {
 
-    if ! systemctl is-enabled ddns.timer ; then
-        systemctl enable --now ddns.timer
+    if ! systemctl is-enabled ddns.service ; then
+        systemctl enable --now ddns.service
     else
         systemctl daemon-reload
-        systemctl restart ddns.timer
+        systemctl restart ddns.service
     fi
 
 }
 
 function disableService () {
 
-    if systemctl is-enabled ddns.timer ; then
-        systemctl disable --now ddns.timer
+    if systemctl is-enabled ddns.service ; then
+        systemctl disable --now ddns.service
         rm -vf /usr/lib/systemd/system/ddns.*
     else
         eventlog "The ddns service is not enabled"
@@ -241,6 +258,8 @@ version="$(cat /usr/share/doc/${appName}/version)"
 license="MIT License"
 
 versionInfo="${appName} Version: ${version} - License: ${license}"
+
+ipAddress="$(curl -s https://icanhazip.com)"
 
 commandList="$(cat <<EOF
 Commands:
@@ -306,11 +325,11 @@ EOF
 case "${1}" in
     "duck"          )
         case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ;
-        duckdns "${@}"
+        checkIpChange ; duckdns "${@}"
     ;;
     "cloudflare"    )
         case "${2}" in -h | --help ) echo "${helpCloudflare}" ; exit 0 ; esac ;
-        cloudflareddns "${@}"
+        checkIpChange ; cloudflareddns "${@}"
     ;;
     "disable"       ) disableService ; exit 0         ;;
     "help"          ) echo "${helpMain}" ; exit 0     ;;
