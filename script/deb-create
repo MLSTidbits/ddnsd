@@ -14,40 +14,7 @@ test ! -f "${BUILD_PATH}/DEBIAN/md5sums" || sed -i "/${APP_NAME}_${VERSION}_${AA
 # The DEBIAN directory should not be included in the md5sums file
 test ! -f "${BUILD_PATH}/DEBIAN/md5sums" || sed -i "/DEBIAN\//d" "${BUILD_PATH}/DEBIAN/md5sums"
 
-# Create control file
-cat <<EOF > "${BUILD_PATH}/DEBIAN/control"
-Package: ${APP_NAME}
-Version: ${VERSION}
-Section: utils
-Priority: ${PRIORITY}
-Architecture: all
-Depends: curl, jq
-Maintainer: ${MAINTAINER}
-Description: ${DESCRIPTION}
-  Update your dynamic DNS for your domain on Cloudflare or DuckDNS.
-EOF
+git log --pretty=format:"${APP_NAME} (%h) sable; urgency=optional%n%n  \
+* %s%n%n -- %an <%ae>  %aD%n" --date=rfc -- "${ROOT_DIR}" | tee "${BUILD_CHANGELOG}" > /dev/null
 
-# Create prerm file to disable the ddns.timer if it is active
-cat <<EOF > "${BUILD_PATH}/DEBIAN/prerm"
-#!/bin/sh
-set -e
-
-case "\${1}" in
-    remove)
-        if systemctl is-active --quiet ddns.service ; then
-            systemctl disable --now ddns.service
-        fi
-    ;;
-    failed-upgrade|abort-install|abort-upgrade|disappear)
-        # do nothing
-    ;;
-    *)
-        echo "prerm called with unknown argument: \$1" >&2
-        exit 1
-    ;;
-esac
-
-exit 0
-EOF
-
-chmod 755 "${BUILD_PATH}/DEBIAN/prerm"
+gzip --best -nvf "${BUILD_CHANGELOG}"

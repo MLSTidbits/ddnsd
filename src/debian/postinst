@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -eo pipefail
+
+case "${1}" in
+    configure|upgrade|reinstall )
+        if systemctl is-active --quiet ddns.service ; then systemctl daemon-reload ; fi
+    ;;
+
+    *)
+        echo "postinst called with unknown argument: \$1" >&2
+        exit 1
+    ;;
+esac

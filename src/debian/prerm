@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -eo pipefail
+
+case "${1}" in
+    remove  )
+        systemctl is-inactive --quiet ddns.service || systemctl disable --now ddns.service
+    ;;
+    failed-upgrade|abort-install|abort-upgrade|disappear) ;;
+    *)
+        echo "prerm called with unknown argument: \$1" >&2
+        exit 1
+    ;;
+esac

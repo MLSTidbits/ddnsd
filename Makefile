@@ -5,8 +5,6 @@ VERSION = $(shell cat VERSION)
 
 DESCRIPTION = Dynamic DNS client
 
-APP_DEP = curl, jq
-
 MAINTAINER = $(shell git config user.name) <$(shell git config user.email)>
 
 # Set priority of the package for deb package manager
@@ -59,7 +57,16 @@ debian:
 
 	@mkdir -pv $(BUILD_PATH)/DEBIAN
 
+	@cp -vf src/debian/* $(BUILD_PATH)/DEBIAN/
+
+	@chmod 755 $(BUILD_PATH)/DEBIAN/postinst $(BUILD_PATH)/DEBIAN/prerm
+
+	@sed -i "s/Version:/Version: $(VERSION)/" $(BUILD_PATH)/DEBIAN/control
+
+	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(BUILD_PATH)/DEBIAN/control
+
 	@script/deb-create
+
 	@dpkg-deb --root-owner-group --build $(BUILD_PATH) build/$(APP_NAME)_$(VERSION)_all.deb
 
 # Install the bash script
