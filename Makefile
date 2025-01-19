@@ -89,9 +89,6 @@ ifeq ($(BASH_COMPLETION),y)
 	@cp -vf $(SOURCE_PATH)/$(APP_NAME)-completion $(BUILD_COMPLETION)/$(APP_NAME)
 endif
 
-	@echo "Building changelog"
-	@script/git-changelog
-
 # Set the permissions
 	@chmod 755 $(BUILD_BIN)/$(APP_NAME)
 	@chmod 644 $(BUILD_DOC)/*
