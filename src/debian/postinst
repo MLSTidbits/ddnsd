@@ -5,10 +5,13 @@ set -eo pipefail
 case "${1}" in
     configure|upgrade|reinstall )
         if systemctl is-active --quiet ddns.service ; then systemctl daemon-reload ; fi
-        useradd --system --no-create-home --shell /usr/sbin/nologin ddns
-        mkdir -p /etc/ddns ; touch /etc/ddns/ddns.ipv4
-        chown -R ddns:ddns /etc/ddns ; chmod 600 /etc/ddns/ddns.ipv4
 
+        # Check if the user exists
+        if ! getent passwd ddns >/dev/null ; then
+            useradd --system --no-create-home --shell /usr/sbin/nologin ddns
+            mkdir -pv /etc/ddns ; touch /etc/ddns/ddns.ipv4
+            chown -R ddns:ddns /etc/ddns ; chmod 600 /etc/ddns/ddns.ipv4
+        fi
     ;;
 
     *)
