@@ -18,11 +18,11 @@ function eventlog () { logger -t "DDNS: " "${@}" ; }
 
 function checkIpChange () {
 
-    test -f /var/tmp/ddns.ip || { echo "${ipAddress}" > /var/tmp/ddns.ip ; exit 0 ; }
+    test -f "${currentIP}" || { echo "${ipAddress}" > "${currentIP}" ; exit 0 ; }
 
     if test -f /usr/lib/systemd/system/ddns.service ; then
-        test "$(cat /var/tmp/ddns.ip)" = "${ipAddress}" || {
-        eventlog "IP address has changed" ; echo "${ipAddress}" > /var/tmp/ddns.ip ; exit 0 ; }
+        test "$(cat ${currentIP})" = "${ipAddress}" || {
+        eventlog "IP address has changed" ; echo "${ipAddress}" > "${currentIP}" ; }
     fi
 
 }
@@ -260,6 +260,8 @@ license="MIT License"
 versionInfo="${appName} Version: ${version} - License: ${license}"
 
 ipAddress="$(curl -s https://icanhazip.com)"
+
+currentIP="/etc/ddns/ddns.ipv4"
 
 commandList="$(cat <<EOF
 Commands:
