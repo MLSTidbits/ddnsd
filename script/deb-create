@@ -13,8 +13,3 @@ test ! -f "${BUILD_PATH}/DEBIAN/md5sums" || sed -i "/${APP_NAME}_${VERSION}_${AA
 
 # The DEBIAN directory should not be included in the md5sums file
 test ! -f "${BUILD_PATH}/DEBIAN/md5sums" || sed -i "/DEBIAN\//d" "${BUILD_PATH}/DEBIAN/md5sums"
-
-git log --pretty=format:"${APP_NAME} (%h) sable; urgency=optional%n%n  \
-* %s%n%n -- %an <%ae>  %aD%n" --date=rfc -- "${ROOT_DIR}" | tee "${BUILD_CHANGELOG}" > /dev/null
-
-gzip --best -nvf "${BUILD_CHANGELOG}"

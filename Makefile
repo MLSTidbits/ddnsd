@@ -67,6 +67,8 @@ debian:
 
 	@script/deb-create
 
+	@git-changelog $(BUILD_CHANGELOG)
+
 	@dpkg-deb --root-owner-group --build $(BUILD_PATH) build/$(APP_NAME)_$(VERSION)_all.deb
 
 # Install the bash script
