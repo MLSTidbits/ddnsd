@@ -215,27 +215,27 @@ function cloudflareddns () {
 
 }
 
-function createService () {
+# function createService () {
 
-cat <<EOF > "/usr/lib/systemd/system/ddns.service"
-[Unit]
-Description = Update dynamic DNS record for ${dnsProvider}
+# cat <<EOF > "/usr/lib/systemd/system/ddns.service"
+# [Unit]
+# Description = Update dynamic DNS record for ${dnsProvider}
 
-[Service]
-Type = simple
-ExecStart = /usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')
-# Restart the service every 10 seconds.
-Restart = always
-RestartSec = 10
-# Output to syslog
-StandardOutput = syslog
-StandardError = syslog
+# [Service]
+# Type = simple
+# ExecStart = /usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')
+# # Restart the service every 10 seconds.
+# Restart = always
+# RestartSec = 10
+# # Output to syslog
+# StandardOutput = syslog
+# StandardError = syslog
 
-[Install]
-WantedBy = multi-user.target
-EOF
+# [Install]
+# WantedBy = multi-user.target
+# EOF
 
-}
+# }
 
 function enableService () {
 
