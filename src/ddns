@@ -32,7 +32,13 @@ function duckdns () {
     # Store the command line arguments in local variables
     local duckdnslog duckURL domainName apiToken setVerbose allowInsecure
 
-    whatCommand="${*}" ; shift 1
+    whatCommand="${*}"
+
+    case "${1}" in
+        -h | --help         ) echo "${helpDuck}"   ; exit 0  ;;
+    esac
+
+    shift 1
 
     duckdnslog="/var/log/ddns.log"
     duckURL="https://www.duckdns.org/update?domains"
@@ -48,7 +54,13 @@ function duckdns () {
         -v | --verbose      ) setVerbose="${2}"    ; shift 2 ;;
         -k | --insecure     ) allowInsecure="true" ; shift   ;;
         -s | --service      )
-            createService ; enableService ; shift
+
+            serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
+
+            echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
+            sed -i "s|ExecStart = .*|ExecStart = /usr/bin/ddns ${serviceCommand}|" /usr/lib/systemd/system/ddns.service
+
+            enableService ; shift
         ;;
         *                   ) break                          ;;
     esac ; done
@@ -99,17 +111,21 @@ function cloudflareddns () {
 
     shift 1
 
+    case "${1}" in
+        -h | --help         ) echo "${helpCloudflare}" ; exit 0   ;;
+    esac
+
     # Test if IP Address is empty
     test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
 
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
-        -d | --domain       ) domainName="${2}" ; shift 2   ;;
-        -t | --token        ) apiToken="${2}"   ; shift 2   ;;
-        -e | --email        ) userEmail="${2}"  ; shift 2   ;;
-        -m | --method       ) methodType="${2}" ; shift 2   ;;
-        -z | --zone         ) zoneID="${2}"     ; shift 2   ;;
-        -p | --proxy        ) ifProxy="${2}"    ; shift 2   ;;
+        -d | --domain       ) domainName="${2}"         ; shift 2 ;;
+        -t | --token        ) apiToken="${2}"           ; shift 2 ;;
+        -e | --email        ) userEmail="${2}"          ; shift 2 ;;
+        -m | --method       ) methodType="${2}"         ; shift 2 ;;
+        -z | --zone         ) zoneID="${2}"             ; shift 2 ;;
+        -p | --proxy        ) ifProxy="${2}"            ; shift 2 ;;
         -K | --keep         )
             case "${arrayKeepFor[@]}" in
                 *"${2}"* ) keepFor="${2}" ; shift 2 ;;
@@ -117,7 +133,13 @@ function cloudflareddns () {
             esac
         ;;
         -s | --service      )
-            createService ; enableService ; shift
+
+            serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
+
+            echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
+            sed -i "s|ExecStart = .*|ExecStart = /usr/bin/ddns ${serviceCommand}|" /usr/lib/systemd/system/ddns.service
+
+            enableService ; shift
         ;;
         *                   ) break                          ;;
     esac ; done
@@ -213,20 +235,6 @@ StandardError = syslog
 WantedBy = multi-user.target
 EOF
 
-# cat <<EOF > "/usr/lib/systemd/system/ddns.timer"
-# [Unit]
-# Description = Update dynamic DNS record for ${dnsProvider}
-# Requires = network-online.target
-
-# [Timer]
-# OnCalendar = *:0/5
-# Persistent = true
-# RandomizedDelaySec = 2m
-
-# [Install]
-# WantedBy = timers.target
-# EOF
-
 }
 
 function enableService () {
@@ -254,7 +262,7 @@ function disableService () {
 set -eo pipefail
 
 appName="ddns"
-version="$(cat /usr/share/doc/${appName}/version)"
+version="$(cat /usr/share/doc/${appName}/version)" || version="rc-0.0.1"
 license="MIT License"
 
 versionInfo="${appName} Version: ${version} - License: ${license}"
@@ -263,6 +271,7 @@ ipAddress="$(curl -s https://icanhazip.com)"
 
 currentIP="/etc/ddns/ddns.ipv4"
 
+# shellcheck disable=SC2148
 commandList="$(cat <<EOF
 Commands:
     duck                            Update dynamic DNS record using DuckDNS
@@ -273,6 +282,8 @@ Commands:
 EOF
 )"
 
+# shellcheck disable=SC2034
+# shellcheck disable=SC2154
 helpMain="$(cat <<EOF
 Usage: ddns [command] <options> |args|
 
@@ -280,10 +291,12 @@ ${commandList}
 
 Run 'ddns duck|cloudflare -h or --help' for more information on a command
 
+
 ${versionInfo}
 EOF
 )"
 
+# shellcheck disable=SC2034
 helpDuck="$(cat <<EOF
 Usage: ddns duck [options] |args|
 
@@ -301,6 +314,7 @@ ${versionInfo}
 EOF
 )"
 
+# shellcheck disable=SC2034
 helpCloudflare="$(cat <<EOF
 Usage: ddns cloudflare [options] |args|
 
@@ -324,6 +338,26 @@ ${versionInfo}
 EOF
 )"
 
+ddnsService="$(cat <<EOF
+[Unit]
+Description = Update dynamic DNS record for DuckDNS or Cloudflare
+
+[Service]
+Type = simple
+ExecStart =
+# Restart the service every 10 seconds.
+Restart = always
+RestartSec = 10
+# Output to syslog
+StandardOutput = syslog
+StandardError = syslog
+
+[Install]
+WantedBy = multi-user.target
+EOF
+)"
+
+# shellcheck disable=SC2154
 case "${1}" in
     "duck"          )
         case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ;
