@@ -45,8 +45,6 @@ function duckdns () {
 
     domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
 
-    dnsProvider="DuckDNS"
-
     # Parse the command line arguments
     while true ; do rootcheck ; case "${1}" in
         -d | --domain       ) domainName="${2}"    ; shift 2 ;;
@@ -58,7 +56,7 @@ function duckdns () {
             serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
 
             echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
-            sed -i "s|ExecStart = .*|ExecStart = /usr/bin/ddns ${serviceCommand}|" /usr/lib/systemd/system/ddns.service
+            sed -i "s/ExecStart =/ExecStart = \/usr\/bin\/ddns ${serviceCommand}/" /usr/lib/systemd/system/ddns.service
 
             enableService ; shift
         ;;
@@ -103,7 +101,6 @@ function cloudflareddns () {
     ipAddress="$(curl -s https://icanhazip.com)"
 
     whatCommand="${*}"
-    dnsProvider="Cloudflare"
 
     arrayKeepFor=( 60 120 300 900 1800 3600 43600 86400 )
 
@@ -137,7 +134,7 @@ function cloudflareddns () {
             serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
 
             echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
-            sed -i "s|ExecStart = .*|ExecStart = /usr/bin/ddns ${serviceCommand}|" /usr/lib/systemd/system/ddns.service
+            sed -i "s/ExecStart =/ExecStart = \/usr\/bin\/ddns ${serviceCommand}/" /usr/lib/systemd/system/ddns.service
 
             enableService ; shift
         ;;
@@ -215,28 +212,6 @@ function cloudflareddns () {
 
 }
 
-# function createService () {
-
-# cat <<EOF > "/usr/lib/systemd/system/ddns.service"
-# [Unit]
-# Description = Update dynamic DNS record for ${dnsProvider}
-
-# [Service]
-# Type = simple
-# ExecStart = /usr/bin/ddns $(echo "${whatCommand}" | sed -E 's/-s|--service//g')
-# # Restart the service every 10 seconds.
-# Restart = always
-# RestartSec = 10
-# # Output to syslog
-# StandardOutput = syslog
-# StandardError = syslog
-
-# [Install]
-# WantedBy = multi-user.target
-# EOF
-
-# }
-
 function enableService () {
 
     if ! systemctl is-enabled ddns.service ; then
@@ -259,7 +234,7 @@ function disableService () {
 
 }
 
-set -eo pipefail
+set -veo pipefail
 
 appName="ddns"
 version="$(cat /usr/share/doc/${appName}/version)" || version="rc-0.0.1"
