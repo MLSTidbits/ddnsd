@@ -1,7 +1,8 @@
+# Ignore the .vscode folder as it contains user settings that
+# may not be relevant for all users
 .vscode/
-build/
+
 .markdownlint.yaml
 
-# Ignore transpiled markdown files
-ddns.8
-*.8.gz
+# The build folder should always be ignored
+build/

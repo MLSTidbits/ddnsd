@@ -1,76 +1,140 @@
 #!/bin/env make -f
 
+APP_NAME = ddns
+VERSION = $(shell cat VERSION)
+
+DESCRIPTION = Dynamic DNS client
+
+MAINTAINER = $(shell git config user.name) <$(shell git config user.email)>
+
+# Set priority of the package for deb package manager
+# optional, low, standard, important, required
+PRIORITY = optional
+
+# dpkg Section option
+SECTION = utils
+
+# Architecture (amd64, i386, armhf, arm64, ... all)
+AARCH = all
+
+export APP_NAME VERSION DESCRIPTION APP_DEP AARCH PRIORITY SECTION MAINTAINER
+
+ROOT_DIR = $(shell pwd)
+
+export ROOT_DIR
+
 # Source path
 SOURCE_PATH = src
-INSTALL_PATH = /usr/bin
-APP_NAME = ddns
+
+# Build path
+BUILD_PATH = build/$(APP_NAME)-$(VERSION)
+
+BUILD_BIN = $(BUILD_PATH)/usr/bin
+BUILD_DOC = $(BUILD_PATH)/usr/share/doc/$(APP_NAME)
+BUILD_MAN = $(BUILD_PATH)/usr/share/man/man8
+BUILD_COMPLETION = $(BUILD_PATH)/usr/share/bash-completion/completions
+BUILD_CHANGELOG = $(BUILD_DOC)/changelog.DEBIAN
+BUILD_HELP = $(BUILD_PATH)/usr/share/$(APP_NAME)
+
+export BUILD_PATH BUILD_DOC BUILD_CHANGELOG
+
+# Install path
+INSTALL_PATH = /usr
 
 MANPAGE = n
 BASH_COMPLETION = n
 
+
 # Phony targets
-.PHONY: install clean
+.PHONY: install clean build
 
 # Default target
-all: install
+all: build install
+
+debian:
+	make build BASH_COMPLETION=y MANPAGE=y
+
+	@echo "Building debian package"
+
+	@mkdir -pv $(BUILD_PATH)/DEBIAN
+
+	@cp -vf src/debian/* $(BUILD_PATH)/DEBIAN/
+
+	@chmod 755 $(BUILD_PATH)/DEBIAN/postinst $(BUILD_PATH)/DEBIAN/prerm
+
+	@sed -i "s/Version:/Version: $(VERSION)/" $(BUILD_PATH)/DEBIAN/control
+
+	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(BUILD_PATH)/DEBIAN/control
+
+	@git-changelog $(BUILD_CHANGELOG)
+	@git-changelog $(BUILD_PATH)/DEBIAN/changelog
+	@gzip -d $(BUILD_PATH)/DEBIAN/changelog.gz
+
+# Create the MD5sums file omitting the DEBIAN directory
+	@find $(BUILD_PATH)/usr -type f -exec md5sum {} \; > $(BUILD_PATH)/DEBIAN/md5sums
+	@sed -i "s|$(BUILD_PATH)/||" $(BUILD_PATH)/DEBIAN/md5sums
+
+	@dpkg-deb --root-owner-group --build $(BUILD_PATH) build/$(APP_NAME)_$(VERSION)_all.deb
 
 # Install the bash script
-install:
+build:
 
-# Check if jq is installed
-ifeq ($(shell which jq > /dev/null 2>&1; echo $$?), 1)
-	@echo "jq is not installed. Please install it to continue."
-	@exit 1
-else
-	@echo "jq is installed."
-endif
+	@echo "Building $(APP_NAME) $(VERSION)"
+	@mkdir -pv $(BUILD_BIN) $(BUILD_DOC) $(BUILD_MAN) $(BUILD_COMPLETION)
 
-	install -d /usr/share//doc/$(APP_NAME)
-
-	install -m 755 ./VERSION /usr/share/doc/$(APP_NAME)/version
-	install -m 755 ./COPYING /usr/share/doc/$(APP_NAME)/license
-
-	install -m 755 $(SOURCE_PATH)/$(APP_NAME) $(INSTALL_PATH)
-
-ifeq ($(BASH_COMPLETION),y)
-	install -m 644 $(SOURCE_PATH)/$(APP_NAME)-completion /etc/bash_completion.d/$(APP_NAME)
-endif
+	@cp -vf $(SOURCE_PATH)/$(APP_NAME) $(BUILD_BIN)/$(APP_NAME)
+	@cp -vf ./VERSION $(BUILD_DOC)/version
+	@cp -vf ./COPYING $(BUILD_DOC)/copyright
 
 ifeq ($(MANPAGE),y)
-# Check if pandoc is installed
-	ifeq ($(shell which pandoc > /dev/null 2>&1; echo $$?), 1)
-		@echo "Pandoc is not installed. Please install it to continue."
-		@exit 1
-	else
-		@echo "Pandoc is installed."
-	endif
-
-	@pandoc -s -t man $(SOURCE_PATH)/doc/$(APP_NAME).8.md -o $(SOURCE_PATH)/$(APP_NAME).8
-	@gzip -9 -c $(SOURCE_PATH)/$(APP_NAME).8 > $(SOURCE_PATH)/$(APP_NAME).8.gz
-	install -m 644 $(SOURCE_PATH)/$(APP_NAME).8.gz /usr/share/man/man8/
-
-# Update manpage database
-	@mandb > /dev/null || { echo "Failed to update manpage database" ; exit 1; }
-
+	@echo "Building manpage"
+	@pandoc -s -t man $(SOURCE_PATH)/doc/$(APP_NAME).8.md -o $(BUILD_MAN)/$(APP_NAME).8
+	@gzip --best -nvf $(BUILD_MAN)/$(APP_NAME).8
 endif
 
-# Clean up build files (if any)
+ifeq ($(BASH_COMPLETION),y)
+	@cp -vf $(SOURCE_PATH)/$(APP_NAME)-completion $(BUILD_COMPLETION)/$(APP_NAME)
+endif
+
+# Set the permissions
+	@chmod 755 $(BUILD_BIN)/$(APP_NAME)
+	@chmod 644 $(BUILD_DOC)/*
+
+ifeq ($(MANPAGE),y)
+	@chmod 644 $(BUILD_MAN)/*
+endif
+
+install:
+
+	@cp -rvf $(BUILD_PATH)/* /
+
+# Create the ddns directory
+	@mkdir -pv /etc/ddns
+
+# Create the ddns user and current ipv4 file
+	@useradd --system --no-create-home --shell /usr/sbin/nologin ddns
+	@touch touch /etc/ddns/ddns.ipv4
+	@chown ddns:ddns /etc/ddns/current_ipv4
+	@chown -R ddns:ddns /etc/ddns
+	@chmod 600 /etc/ddns/ddns.ipv4
+
 uninstall:
-	rm -f $(INSTALL_PATH)/$(APP_NAME)
-	rm -f /etc/bash_completion.d/$(APP_NAME)
-	rm -rf /usr/share/man/man8/$(APP_NAME).8.gz
-	rm -rf /usr/share/$(APP_NAME)
+	@rm -vf $(INSTALL_PATH)/bin/$(APP_NAME) \
+		$(INSTALL_PATH)/share/doc/$(APP_NAME)/* \
+		$(INSTALL_PATH)/share/man/man8/$(APP_NAME).8.gz \
+		$(INSTALL_PATH)/share/bash-completion/completions/$(APP_NAME)
 
 clean:
-	@rm -vf $(SOURCE_PATH)/$(APP_NAME).8.gz
-	@rm -vf $(SOURCE_PATH)/$(APP_NAME).8
+	@rm -Rvf ./build
 
 help:
 	@echo "Usage: make [target] <variables>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  install   - Install the script"
-	@echo "  uninstall - Uninstall the script"
+	@echo "  all       - Build and install the ddns application"
+	@echo "  build     - Build the ddns application"
+	@echo "  install   - Install the ddns application"
+	@echo "  uninstall - Uninstall the ddns application"
 	@echo "  clean     - Clean up build files"
 	@echo "  help      - Display this help message"
 	@echo ""
