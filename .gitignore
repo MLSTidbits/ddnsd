@@ -1,4 +1,5 @@
 .vscode/
+build/
 .markdownlint.yaml
 
 # Ignore transpiled markdown files
