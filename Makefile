@@ -34,6 +34,7 @@ BUILD_DOC = $(BUILD_PATH)/usr/share/doc/$(APP_NAME)
 BUILD_MAN = $(BUILD_PATH)/usr/share/man/man8
 BUILD_COMPLETION = $(BUILD_PATH)/usr/share/bash-completion/completions
 BUILD_CHANGELOG = $(BUILD_DOC)/changelog.DEBIAN
+BUILD_HELP = $(BUILD_PATH)/usr/share/$(APP_NAME)
 
 export BUILD_PATH BUILD_DOC BUILD_CHANGELOG
 
@@ -65,9 +66,13 @@ debian:
 
 	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(BUILD_PATH)/DEBIAN/control
 
-	@script/deb-create
-
 	@git-changelog $(BUILD_CHANGELOG)
+	@git-changelog $(BUILD_PATH)/DEBIAN/changelog
+	@gzip -d $(BUILD_PATH)/DEBIAN/changelog.gz
+
+# Create the MD5sums file omitting the DEBIAN directory
+	@find $(BUILD_PATH)/usr -type f -exec md5sum {} \; > $(BUILD_PATH)/DEBIAN/md5sums
+	@sed -i "s|$(BUILD_PATH)/||" $(BUILD_PATH)/DEBIAN/md5sums
 
 	@dpkg-deb --root-owner-group --build $(BUILD_PATH) build/$(APP_NAME)_$(VERSION)_all.deb
 
@@ -102,6 +107,16 @@ endif
 install:
 
 	@cp -rvf $(BUILD_PATH)/* /
+
+# Create the ddns directory
+	@mkdir -pv /etc/ddns
+
+# Create the ddns user and current ipv4 file
+	@useradd --system --no-create-home --shell /usr/sbin/nologin ddns
+	@touch touch /etc/ddns/ddns.ipv4
+	@chown ddns:ddns /etc/ddns/current_ipv4
+	@chown -R ddns:ddns /etc/ddns
+	@chmod 600 /etc/ddns/ddns.ipv4
 
 uninstall:
 	@rm -vf $(INSTALL_PATH)/bin/$(APP_NAME) \
