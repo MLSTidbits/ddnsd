@@ -283,6 +283,8 @@ Options:
     -t, --token <token>             API token that you get from DuckDNS
     -k, --insecure <true|false>     Allow insecure connections. The default is false
     -v, --verbose  <true|false>     Show more information. The default is false
+    -s, --service                   Enable either DuckDNS or Cloudflare* to run as a Systemd Timer (Daemon).
+                                    Enabling this for OpenVPN or WireGuard server is recommended.
     -h, --help                      Show this help message
 
 ${versionInfo}
