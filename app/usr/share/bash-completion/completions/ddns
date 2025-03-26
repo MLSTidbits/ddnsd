@@ -1,5 +1,6 @@
 # shellcheck disable=SC2148
 _ddns_complete() {
+
     local cur prev commands duck_options cloudflare_options
     cur="${COMP_WORDS[COMP_CWORD]}"
 
@@ -16,15 +17,14 @@ _ddns_complete() {
 
     # Handle completions based on the current command
 
-    # shellcheck disable=SC2207
     case "${COMP_WORDS[1]}" in
-        duck            )   COMPREPLY=( $(compgen -W "${duck_options}" -- "$cur") )       ;;
-        cloudflare      )   COMPREPLY=( $(compgen -W "${cloudflare_options}" -- "$cur") ) ;;
-        help | version  )   COMPREPLY=()                                                  ;;
+        duck            )   mapfile -t COMPREPLY < <(compgen -W "${duck_options}" -- "$cur")       ;;
+        cloudflare      )   mapfile -t COMPREPLY < <(compgen -W "${cloudflare_options}" -- "$cur") ;;
+        help | version  )   COMPREPLY=()                                                           ;;
         *)
             # Default to completing the main commands
             if [[ "$COMP_CWORD" -eq 1 ]]; then
-                COMPREPLY=( $(compgen -W "${commands}" -- "$cur") )
+                mapfile -t COMPREPLY < <(compgen -W "${commands}" -- "$cur")
             fi
         ;;
     esac

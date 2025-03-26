@@ -1,143 +1,77 @@
 #!/bin/env make -f
 
-APP_NAME = ddns
+PACKAGE = $(shell basename $(CURDIR))
 VERSION = $(shell cat VERSION)
-
-DESCRIPTION = Dynamic DNS client
 
 MAINTAINER = $(shell git config user.name) <$(shell git config user.email)>
 
-# Set priority of the package for deb package manager
-# optional, low, standard, important, required
-PRIORITY = optional
+INSTALL = wireguard-tools, jq
+BUILD = debhelper, git-changelog, make (>= 4.1), dpkg-dev, bash (>= 4.4), pandoc
 
-# dpkg Section option
-SECTION = utils
+HOMEPAGE = https:\/\/github.com\/MichaelSchaecher\/ddns
 
-# Architecture (amd64, i386, armhf, arm64, ... all)
-AARCH = all
+ARCH = amd64
 
-export APP_NAME VERSION DESCRIPTION APP_DEP AARCH PRIORITY SECTION MAINTAINER
+PACKAGE_DIR = package/$(PACKAGE)_$(VERSION)_$(ARCH)
 
-ROOT_DIR = $(shell pwd)
-
-export ROOT_DIR
-
-# Source path
-SOURCE_PATH = src
-
-# Build path
-BUILD_PATH = build/$(APP_NAME)-$(VERSION)
-
-BUILD_BIN = $(BUILD_PATH)/usr/bin
-BUILD_DOC = $(BUILD_PATH)/usr/share/doc/$(APP_NAME)
-BUILD_MAN = $(BUILD_PATH)/usr/share/man/man8
-BUILD_COMPLETION = $(BUILD_PATH)/usr/share/bash-completion/completions
-BUILD_CHANGELOG = $(BUILD_DOC)/changelog.DEBIAN
-BUILD_HELP = $(BUILD_PATH)/usr/share/$(APP_NAME)
-
-export BUILD_PATH BUILD_DOC BUILD_CHANGELOG
-
-# Install path
-INSTALL_PATH = /usr
-
-MANPAGE = n
-BASH_COMPLETION = n
-
+export PACKAGE_DIR
 
 # Phony targets
-.PHONY: install clean build
+.PHONY: all debian clean help
 
 # Default target
-all: build install
+all: debian
 
 debian:
-	make build BASH_COMPLETION=y MANPAGE=y
 
-	@echo "Building debian package"
+	@echo "Building package $(PACKAGE) version $(VERSION)"
 
-	@mkdir -pv $(BUILD_PATH)/DEBIAN
+	@mkdir -p $(PACKAGE_DIR)
+	@cp -a app/* $(PACKAGE_DIR)
 
-	@cp -vf src/debian/* $(BUILD_PATH)/DEBIAN/
+	@echo "Transpile: $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md"
 
-	@chmod 755 $(BUILD_PATH)/DEBIAN/postinst $(BUILD_PATH)/DEBIAN/prerm
+	@pandoc -s -t man $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md -o \
+		$(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
+	@gzip --best -nvf $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
+	@rm -v $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md
 
-	@sed -i "s/Version:/Version: $(VERSION)/" $(BUILD_PATH)/DEBIAN/control
+	@sed -i "s/Version:/Version: $(VERSION)/" $(PACKAGE_DIR)/DEBIAN/control
+	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(PACKAGE_DIR)/DEBIAN/control
+	@sed -i "s/Homepage:/Homepage: $(HOMEPAGE)/" $(PACKAGE_DIR)/DEBIAN/control
+	@sed -i "s/Architecture:/Architecture: $(ARCH)/" $(PACKAGE_DIR)/DEBIAN/control
 
-	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(BUILD_PATH)/DEBIAN/control
+	@sed -i "s/Depends:/Depends: $(INSTALL)/" $(PACKAGE_DIR)/DEBIAN/control
+	@sed -i "s/Build-Depends:/Build-Depends: $(BUILD)/" $(PACKAGE_DIR)/DEBIAN/control
 
-	@git-changelog $(BUILD_CHANGELOG)
-	@git-changelog $(BUILD_PATH)/DEBIAN/changelog
-	@gzip -d $(BUILD_PATH)/DEBIAN/changelog.gz
+# For some reason the INSTALL variable is being added to BUILD variable at the beginning of the line
+# so we need to remove the that part of the line
+	@sed -i "s/Build-Depends: $(BUILD) $(INSTALL)/Build-Depends: $(BUILD)/" $(PACKAGE_DIR)/DEBIAN/control
 
-# Create the MD5sums file omitting the DEBIAN directory
-	@find $(BUILD_PATH)/usr -type f -exec md5sum {} \; > $(BUILD_PATH)/DEBIAN/md5sums
-	@sed -i "s|$(BUILD_PATH)/||" $(BUILD_PATH)/DEBIAN/md5sums
+	@cat ./DESCRIPTION >> $(PACKAGE_DIR)/DEBIAN/control
 
-	@dpkg-deb --root-owner-group --build $(BUILD_PATH) build/$(APP_NAME)_$(VERSION)_all.deb
+	@help/size
 
-# Install the bash script
-build:
+	@git-changelog $(PACKAGE_DIR)/DEBIAN/changelog
+	@git-changelog $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/changelog
+	@gzip -d $(PACKAGE_DIR)/DEBIAN/changelog.gz
 
-	@echo "Building $(APP_NAME) $(VERSION)"
-	@mkdir -pv $(BUILD_BIN) $(BUILD_DOC) $(BUILD_MAN) $(BUILD_COMPLETION)
-
-	@cp -vf $(SOURCE_PATH)/$(APP_NAME) $(BUILD_BIN)/$(APP_NAME)
-	@cp -vf ./VERSION $(BUILD_DOC)/version
-	@cp -vf ./COPYING $(BUILD_DOC)/copyright
-
-ifeq ($(MANPAGE),y)
-	@echo "Building manpage"
-	@pandoc -s -t man $(SOURCE_PATH)/doc/$(APP_NAME).8.md -o $(BUILD_MAN)/$(APP_NAME).8
-	@gzip --best -nvf $(BUILD_MAN)/$(APP_NAME).8
-endif
-
-ifeq ($(BASH_COMPLETION),y)
-	@cp -vf $(SOURCE_PATH)/$(APP_NAME)-completion $(BUILD_COMPLETION)/$(APP_NAME)
-endif
-
-# Set the permissions
-	@chmod 755 $(BUILD_BIN)/$(APP_NAME)
-	@chmod 644 $(BUILD_DOC)/*
-
-ifeq ($(MANPAGE),y)
-	@chmod 644 $(BUILD_MAN)/*
-endif
+	@dpkg-deb --root-owner-group --build $(PACKAGE_DIR) package/$(PACKAGE)_$(VERSION)_$(ARCH).deb
 
 install:
 
-	@cp -rvf $(BUILD_PATH)/* /
-
-# Create the ddns directory
-	@mkdir -pv /etc/ddns
-
-# Create the ddns user and current ipv4 file
-	@useradd --system --no-create-home --shell /usr/sbin/nologin ddns
-	@touch touch /etc/ddns/ddns.ipv4
-	@chown ddns:ddns /etc/ddns/current_ipv4
-	@chown -R ddns:ddns /etc/ddns
-	@chmod 600 /etc/ddns/ddns.ipv4
-
-uninstall:
-	@rm -vf $(INSTALL_PATH)/bin/$(APP_NAME) \
-		$(INSTALL_PATH)/share/doc/$(APP_NAME)/* \
-		$(INSTALL_PATH)/share/man/man8/$(APP_NAME).8.gz \
-		$(INSTALL_PATH)/share/bash-completion/completions/$(APP_NAME)
+	@dpkg -i package/$(PACKAGE)_$(VERSION)_$(ARCH).deb
 
 clean:
-	@rm -Rvf ./build
+	@rm -Rvf ./package
 
 help:
 	@echo "Usage: make [target] <variables>"
 	@echo ""
 	@echo "Targets:"
-	@echo "  all       - Build and install the ddns application"
-	@echo "  build     - Build the ddns application"
-	@echo "  install   - Install the ddns application"
-	@echo "  uninstall - Uninstall the ddns application"
+	@echo "  all       - Build the debian package and install it"
+	@echo "  debian    - Build the debian package"
+	@echo "  install   - Install the debian package"
 	@echo "  clean     - Clean up build files"
 	@echo "  help      - Display this help message"
 	@echo ""
-	@echo "Variables:"
-	@echo "  MANPAGE   - Set to 'y' to install manpage (default: n)"
-	@echo "  COMPLETION - Set to 'y' to install bash completion (default: n)"

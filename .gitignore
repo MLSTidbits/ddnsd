@@ -6,3 +6,4 @@
 
 # The build folder should always be ignored
 build/
+package/
