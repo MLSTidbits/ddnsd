@@ -15,46 +15,33 @@ The recommended way to secure your home network is to use a VPN server like [Wir
 
 ## Installation
 
-There are some requirements needed in order to install **ddns**. You will **jq** and **curl** installed on your system. If you don't have them installed use the default package manager for your system to install them. Once you have them installed you can then clone the repository and run the following command to install the script.
+### Debian/Ubuntu
+
+```bash
+echo "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main" |sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
+```
+
+```bash
+wget -qO - https://raw.githubusercontent.com/MichaelSchaecher/apt-repo/refs/heads/main/key/HowToNebie.gpg |
+gpg --dearmor | sudo dd of=/usr/share/keyrings/HowToNebie.gpg
+```
+
+### Manual
+
+You can also build the deb package yourself by cloning the repository.
 
 ```bash
 git clone https://github.com/MichaelSchaecher/ddns.git
+cd ddns
 ```
-
-Now install the script:
 
 ```bash
-cd ddns ; sudo make install
+make debian
+sudo dpkg -i package/*.deb
 ```
 
-If you want to install the manpage you will need to have **pandoc** installed on your system. Again use the default package manager for your system to install it.
+Or just manually copy the files to the correct location.
 
 ```bash
-sudo make install MANPAGE=y
+sudo cp -av app/usr /
 ```
-
-Install with bash completion:
-
-```bash
-sudo make install BASH_COMPLETION=y
-```
-
-To uninstall the script run:
-
-```bash
-sudo make uninstall
-```
-
-To clean up the repository run `make clean`.
-
-## Setting Systemd Timer
-
-The command used to update the DNS records with this script can be demonized allowing for hands off automotive way to update the DNS records.
-
-Using the following command to enable the timer:
-
-```bash
-sudo ddns [duck|cloudflare] <options-and-arguments-for-updating-record> --service
-```
-
-A systemd timer and service script will be created and enabled to run the script at the specified interval.
