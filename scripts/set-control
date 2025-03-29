@@ -24,6 +24,6 @@ Homepage: ${HOMEPAGE}
 Architecture: amd64
 Depends: ${INSTALL}
 Build-Depends: ${BUILD}
-Description: Git commit to Debian changelog -
-    using git commit data to create a Debian changelog entry.
+Description: Update Cloudflare/DuckDNS DynamicDNS records -
+    keeping your DNS records up to date with your current IP address.
 EOF
