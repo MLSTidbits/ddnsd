@@ -1,20 +1,20 @@
 #!/bin/env make -f
 
-PACKAGE = $(shell basename $(CURDIR))
-VERSION = $(shell cat VERSION)
+PACKAGE = $(shell basename $(shell pwd))
+VERSION = $(shell bash scripts/set-version)
 
 MAINTAINER = $(shell git config user.name) <$(shell git config user.email)>
 
-INSTALL = wireguard-tools, jq
-BUILD = debhelper, git-changelog, make (>= 4.1), dpkg-dev, bash (>= 4.4), pandoc
+INSTALL = dpkg-dev, git
+BUILD = debhelper (>= 11), git, make (>= 4.1), dpkg-dev
 
-HOMEPAGE = https:\/\/github.com\/MichaelSchaecher\/ddns
+HOMEPAGE = https://github.com/MichaelSchaecher/dpkg-changelog
 
-ARCH = amd64
+PACKAGE_DIR = package
 
-PACKAGE_DIR = package/$(PACKAGE)_$(VERSION)_$(ARCH)
+ARCH = $(shell dpkg --print-architecture)
 
-export PACKAGE_DIR
+export PACKAGE_DIR PACKAGE VERSION MAINTAINER INSTALL BUILD HOMEPAGE ARCH
 
 # Phony targets
 .PHONY: all debian clean help
@@ -26,41 +26,24 @@ debian:
 
 	@echo "Building package $(PACKAGE) version $(VERSION)"
 
-	@mkdir -p $(PACKAGE_DIR)
-	@cp -a app/* $(PACKAGE_DIR)
+	@echo "$(VERSION)" > $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/version
 
-	@echo "Transpile: $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md"
+	@scripts/set-control
 
-	@pandoc -s -t man $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md -o \
+	@pandoc -s -t man man/$(PACKAGE).8.md -o \
 		$(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
 	@gzip --best -nvf $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
-	@rm -v $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.md
 
-	@sed -i "s/Version:/Version: $(VERSION)/" $(PACKAGE_DIR)/DEBIAN/control
-	@sed -i "s/Maintainer:/Maintainer: $(MAINTAINER)/" $(PACKAGE_DIR)/DEBIAN/control
-	@sed -i "s/Homepage:/Homepage: $(HOMEPAGE)/" $(PACKAGE_DIR)/DEBIAN/control
-	@sed -i "s/Architecture:/Architecture: $(ARCH)/" $(PACKAGE_DIR)/DEBIAN/control
+	@dpkg-changelog $(PACKAGE_DIR)/DEBIAN/changelog
+	@dpkg-changelog $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/changelog
+	@gzip -d $(PACKAGE_DIR)/DEBIAN/*.gz
+	@mv $(PACKAGE_DIR)/DEBIAN/changelog.DEBIAN $(PACKAGE_DIR)/DEBIAN/changelog
 
-	@sed -i "s/Depends:/Depends: $(INSTALL)/" $(PACKAGE_DIR)/DEBIAN/control
-	@sed -i "s/Build-Depends:/Build-Depends: $(BUILD)/" $(PACKAGE_DIR)/DEBIAN/control
-
-# For some reason the INSTALL variable is being added to BUILD variable at the beginning of the line
-# so we need to remove the that part of the line
-	@sed -i "s/Build-Depends: $(BUILD) $(INSTALL)/Build-Depends: $(BUILD)/" $(PACKAGE_DIR)/DEBIAN/control
-
-	@cat ./DESCRIPTION >> $(PACKAGE_DIR)/DEBIAN/control
-
-	@help/size
-
-	@git-changelog $(PACKAGE_DIR)/DEBIAN/changelog
-	@git-changelog $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/changelog
-	@gzip -d $(PACKAGE_DIR)/DEBIAN/changelog.gz
-
-	@dpkg-deb --root-owner-group --build $(PACKAGE_DIR) package/$(PACKAGE)_$(VERSION)_$(ARCH).deb
+	@scripts/mkdeb
 
 install:
 
-	@dpkg -i package/$(PACKAGE)_$(VERSION)_$(ARCH).deb
+	@dpkg -i $(PACKAGE)_$(VERSION)_$(ARCH).deb
 
 clean:
 	@rm -Rvf ./package
