@@ -23,7 +23,9 @@ Installed-Size: ${totalSize}
 Homepage: ${HOMEPAGE}
 Architecture: amd64
 Depends: ${INSTALL}
+Conflicts: ${CONFLICTS}
 Build-Depends: ${BUILD}
-Description: Update Cloudflare/DuckDNS DynamicDNS records -
-    keeping your DNS records up to date with your current IP address.
+Description: Manage BTRFS snapshots simply -
+    If you are using the BTRFS filesystem the way it was intended.
+    NOTE: This package is not compatible with Timeshift.
 EOF

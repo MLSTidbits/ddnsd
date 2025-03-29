@@ -4,8 +4,9 @@ build/
 
 *.gz
 *.xz
-8.deb
+*.deb
 *.tar
 package/DEBIAN/control
 package/DEBIAN/changelog
 version
+md5sums

@@ -29,6 +29,7 @@ debian:
 	@echo "$(VERSION)" > $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/version
 
 	@scripts/set-control
+	@scripts/sum
 
 	@pandoc -s -t man man/$(PACKAGE).8.md -o \
 		$(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
@@ -46,7 +47,11 @@ install:
 	@dpkg -i $(PACKAGE)_$(VERSION)_$(ARCH).deb
 
 clean:
-	@rm -Rvf ./package
+	@rm -vf $(PACKAGE_DIR)/DEBIAN/control \
+		$(PACKAGE_DIR)/DEBIAN/changelog \
+		$(PACKAGE_DIR)/DEBIAN/md5sums \
+		$(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/*.gz \
+		$(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8.gz \
 
 help:
 	@echo "Usage: make [target] <variables>"
