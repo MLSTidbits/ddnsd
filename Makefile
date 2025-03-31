@@ -8,13 +8,15 @@ MAINTAINER = $(shell git config user.name) <$(shell git config user.email)>
 INSTALL = dpkg-dev, git
 BUILD = debhelper (>= 11), git, make (>= 4.1), dpkg-dev
 
-HOMEPAGE = https://github.com/MichaelSchaecher/dpkg-changelog
-
-PACKAGE_DIR = package
+HOMEPAGE = https://github.com/MichaelSchaecher/ddns
 
 ARCH = $(shell dpkg --print-architecture)
 
-export PACKAGE_DIR PACKAGE VERSION MAINTAINER INSTALL BUILD HOMEPAGE ARCH
+PACKAGE_DIR = package
+
+WORKING_DIR = $(shell pwd)
+
+export PACKAGE VERSION MAINTAINER INSTALL BUILD HOMEPAGE ARCH PACKAGE_DIR WORKING_DIR
 
 # Phony targets
 .PHONY: all debian clean help
@@ -28,9 +30,6 @@ debian:
 
 	@echo "$(VERSION)" > $(PACKAGE_DIR)/usr/share/doc/$(PACKAGE)/version
 
-	@scripts/set-control
-	@scripts/sum
-
 	@pandoc -s -t man man/$(PACKAGE).8.md -o \
 		$(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
 	@gzip --best -nvf $(PACKAGE_DIR)/usr/share/man/man8/$(PACKAGE).8
@@ -40,7 +39,14 @@ debian:
 	@gzip -d $(PACKAGE_DIR)/DEBIAN/*.gz
 	@mv $(PACKAGE_DIR)/DEBIAN/changelog.DEBIAN $(PACKAGE_DIR)/DEBIAN/changelog
 
+	@scripts/set-control
+	@scripts/gen-chsums
+
+ifeq ($(FORCE_DEB),yes)
+	@scripts/mkdeb --force
+else
 	@scripts/mkdeb
+endif
 
 install:
 
