@@ -86,38 +86,38 @@ This is the API token for your Cloudflare or DuckDNS account. For Cloudflare, yo
 API_TOKEN="your_api_token_here"
 ```
 
-### Zone ID
+### Cloudflare Zone ID
 
 For Cloudflare, this is the Zone ID of your domain. You can find this in your Cloudflare dashboard under the domain settings. This setting is not required for DuckDNS.
 
 ```bash
-ZONE_ID="your_zone_id_here"
+CLOUDFLARE_ZONE_ID="your_zone_id_here"
 ```
 
-### Allow HTTP
+### DuckDNS Insecure Connections
 
 This setting allows you to enable insecure connections to the DuckDNS API using HTTP instead of HTTPS. This generally not recommended due to security concerns, but it can be useful in certain situations. The default is `false`.
 
 ```bash
-ALLOW_HTTP=false
+DUCKDNS_INSECURE=false
 ```
 
-### Proxy
+### Cloudflare Proxy
 
 For Cloudflare, this setting allows you to enable or disable the proxy for your domain. If set to `true`, Cloudflare will act as a proxy for your domain, providing additional security and performance benefits. The default is `true`.
 
 > **Note**: If you are using a VPN service then you may want to set this to `false` to avoid issues with the proxy. This is true for self-hosted VPN services like [WireGuard](https://www.wireguard.com/) or [OpenVPN](https://openvpn.net/).
 
 ```bash
-PROXY=true
+CLOUDFLARE_PROXY=true
 ```
 
-### Keep Alive
+### Cloudflare Renewal Interval
 
 This tells Cloudflare how often to renew the DNS record. The default is `3600` seconds (1 hour). In most cases, you can leave this as is, but if you have a dynamic IP address that changes frequently, you may want to set this to a lower value.
 
 ```bash
-KEEP_ALIVE=3600
+CLOUDFLARE_RENEWAL=3600
 ```
 
 ## Usage
