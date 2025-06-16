@@ -7,9 +7,9 @@
     />
 </div>
 
-## Introduction
+## About
 
-**`ddnsd`** is a dynamic DNS client written in bash. It is designed to update DNS records automatically when your IP address changes, ensuring that your domain name always points to the correct IP.
+Most IP Addresses provided by ISPs are dynamic, meaning they can change over time. This can be problematic if you want to self-host services like a web/game server vps or vpn. There needs to be a way to update the DNS records automatically when your IP changes. This is where **ddnsd** comes in. **ddnsd** is a **bash** script that runs in the background and checks your public IP address for any changes. If a change is detected, it updates the DNS records of your domain using the [Cloudflare](https://developers.cloudflare.com/dns/manage-dns-records/how-to/managing-dynamic-ip-addresses/) or [DuckDNS](https://www.duckdns.org/) API.
 
 ### Features
 
@@ -28,6 +28,12 @@ For **`ddnsd`** to work correctly, you need a standard server or LXC system with
 - 25GB Disk Space or higher (4GB for LXC container)
 - Network connection
 - **Cloudflare** or **DuckDNS** account.
+
+### Drawbacks
+
+- **VPS/VPN Conflicts**: If you are using a VPN service, you may encounter issues with the Cloudflare proxy. In this case, it is recommended to disable the proxy in the configuration file.
+- **Security**: Using HTTP instead of HTTPS for DuckDNS can expose your credentials. It is recommended to use HTTPS whenever possible.
+- **Limited to Cloudflare and DuckDNS**: Currently, only these two providers are supported. If you need support for other providers, follow [contributing](#contributing) section on how to contribute to the project.
 
 ## Installation
 
