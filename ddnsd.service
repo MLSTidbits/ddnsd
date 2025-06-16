@@ -1,0 +1,12 @@
+[Unit]
+Description = Update dynamic DNS record for DuckDNS or Cloudflare
+After = network.target
+
+[Service]
+Type = simple
+ExecStart = /usr/bin/ddnsd start --update
+StandardOutput = syslog
+StandardError = syslog
+
+[Install]
+WantedBy = multi-user.target
