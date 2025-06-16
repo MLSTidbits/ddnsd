@@ -1,0 +1,22 @@
+Package: ddnsd
+Version:
+Section: utils
+Priority: optional
+Maintainer:
+Installed-Size:
+Homepage: https://github.com/MichaelSchaecher/ddnsd
+Architecture: amd64
+Depends: dpkg-dev, git
+Build-Depends: debhelper (>= 11), git, make (>= 4.1), dpkg-dev
+Description: ddnsd is a dynamic DNS server -
+    that allows you to update DNS records dynamically. Tt is designed to be simple
+    and efficient, making it suitable for small to medium-sized networks.
+    .
+    This package provides the ddnsd server and client utilities for managing dynamic
+    DNS updates.
+    .
+    Features include:
+    - Support for multiple DNS providers
+    - Easy configuration
+    - Lightweight and fast
+    - Open source and community-driven
