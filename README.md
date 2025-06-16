@@ -1,13 +1,15 @@
-<div align="center">
-    <strong>
-        <h1>DynamicDNS</h1>
-        Easily update your DNS records with your current IP address for both DuckDNS and Cloudflare.
-    </strong>
+<div align="right">
+    <img
+        src="images/logo.svg"
+        alt="ddnsd logo"
+        width="auto"
+        height="300"
+    />
 </div>
 
 ## Introduction
 
-Having a dynamic IP address can be a pain when you want to access your home network from outside your home. This is where DynamicDNS comes in. `ddns` is a bash script that can be used to update your DNS records with your current IP address for both DuckDNS and Cloudflare.
+Having a dynamic IP address can be a pain when you want to access your home network from outside your home. This is where DynamicDNS comes in. **`ddnsd`** is a bash script that can be used to update your DNS records with your current IP address for both DuckDNS and Cloudflare.
 
 > **Note:** Having an public DNS record pointing to your home network can be a security risk and is not recommended unless you know what you are doing.
 
@@ -31,8 +33,8 @@ gpg --dearmor | sudo dd of=/usr/share/keyrings/HowToNebie.gpg
 You can also build the deb package yourself by cloning the repository.
 
 ```bash
-git clone https://github.com/MichaelSchaecher/ddns.git
-cd ddns
+git clone https://github.com/MichaelSchaecher/ddnsd.git
+cd ddnsd
 ```
 
 ```bash
