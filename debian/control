@@ -6,7 +6,7 @@ Maintainer: Michael Schaecher <MichaelLeeSchaecher@gmail.com>
 Installed-Size:
 Homepage: https://github.com/MichaelSchaecher/ddnsd
 Architecture: amd64
-Depends: dpkg-dev, git, jq
+Depends: jq, inotify-tools, curl, coreutils
 Build-Depends: debhelper (>= 11), git, make (>= 4.1), dpkg-dev
 Description: ddnsd is a dynamic DNS server -
     that allows you to update DNS records dynamically. Tt is designed to be simple
