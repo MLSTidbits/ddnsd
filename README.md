@@ -136,24 +136,13 @@ This will check your current IP address and update your DNS records if necessary
 
 ### Options
 
-- `start`: Start the **`ddnsd`** service.
-- `stop`: Stop the **`ddnsd`** service.
+- `start`: Start monitoring for IP changes and update DDNS
+- `stop`: Stop the ddnsd systemd service
 - `restart`: Restart the **`ddnsd`** service.
 - `status`: Display the current status of the **`ddnsd`** service.
 - `help`: Display help information for the **`ddnsd`** command.
 - `version`: Display the version of **`ddnsd`**.
 - `config`: Open the configuration file in the default text editor.
-
-### Flag Options
-
-- `-h`, `--help`: Display help information.
-- `-v`, `--version`: Display the version of **`ddnsd`**.
-- `-l`, `--list`: List all domains managed by **`ddnsd`**.
-- `-a`, `--add`: Add a new domain to the list of managed domains.
-- `-d`, `--daemonize`: Run **`ddnsd`** as a daemon in the background.
-- `-r`, `--remove`: Remove a domain from the list of managed domains.
-- `-u`, `--update`: Force an update of the DNS records for all managed domains.
-- `-i`, `--ip`: Display the current public IP address.
 
 ## Contributing
 
