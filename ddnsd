@@ -1,351 +1,293 @@
 #!/bin/env bash
 
-# ddns Copyright (c) 2024 by <mschaecher78@gmail.com> Michael L. Schaecher - MIT License
+# ddnsd - A simple dynamic DNS client script
+# Copyright (C) 2025 Michael Schaecher <MichaelLeeSchaecher@gmail.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# ddns is used to update dns records on DuckDNS and Cloudflare using their respective APIs
-# causing them both to be dynamic DNS providers.
+# Check if the script is run as root
+function Root_Check () {
 
-# For more information on DuckDNS visit https://www.duckdns.org
-
-function rootcheck () {
-
-    # Check if the script is run as root
-    test "$(id -u)" -eq 0 || { echo "This script must be run as root" ; exit 1 ; }
-
-}
-
-function eventlog () { logger -t "DDNS: " "${@}" ; }
-
-function checkIpChange () {
-
-    test -f "${currentIP}" || { echo "${ipAddress}" > "${currentIP}" ; exit 0 ; }
-
-    if test -f /usr/lib/systemd/system/ddns.service ; then
-        test "$(cat ${currentIP})" = "${ipAddress}" || {
-        eventlog "IP address has changed" ; echo "${ipAddress}" > "${currentIP}" ; }
-    fi
+    (( "$(id -u)" == 0 )) || { echo "This script must be run as root" ; exit 1 ; }
 
 }
 
-function duckdns () {
+function start_ddnsd () {
+    echo "Starting ddnsd..."
 
-    # Store the command line arguments in local variables
-    local duckdnslog duckURL domainName apiToken setVerbose allowInsecure
+    test -n "${_domainName}" || {
+        echo "Domain name is not set. Please set DOMAIN_NAME in the configuration." ; exit 1 ;
+    }
 
-    whatCommand="${*}"
+    test -n "${_apiToken}" || {
+        echo "API token is not set. Please set API_TOKEN in the configuration." ; exit 1 ;
+    }
 
-    case "${1}" in
-        -h | --help         ) echo "${helpDuck}"   ; exit 0  ;;
-    esac
+    Root_Check
 
-    shift 1
+    # Monitor for updates
+    while true ; do
 
-    duckdnslog="/var/log/ddns.log"
-    duckURL="https://www.duckdns.org/update?domains"
+        # Check for changes to the IP address using a subshell
+        (
+            while true ; do
+                _currentIP="$(check_ip)"
+                _savedIP="$(cat /tmp/ddnsd.ip)"
 
-    domainName="" ; apiToken="" ; setVerbose="false" ; allowInsecure="false"
+                if test "${_savedIP}" != "${_currentIP}" ; then
+                    echo "IP changed: ${_currentIP}"
+                    echo "${_currentIP}" > /tmp/ddnsd.ip
+                fi
+                sleep 1
+            done
+        ) &
 
-    # Parse the command line arguments
-    while true ; do rootcheck ; case "${1}" in
-        -d | --domain       ) domainName="${2}"    ; shift 2 ;;
-        -t | --token        ) apiToken="${2}"      ; shift 2 ;;
-        -v | --verbose      ) setVerbose="${2}"    ; shift 2 ;;
-        -k | --insecure     ) allowInsecure="true" ; shift   ;;
-        -s | --service      )
+        # if test "${_savedIP}" != "${_currentIP}" ; then
+        #     echo "IP changed: ${_currentIP}"
+        #     echo "${_currentIP}" > /tmp/ddnsd.ip
 
-            serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
+        inotifywait -m -e modify -t 0 /tmp/ddnsd.ip && {
 
-            echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
-            sed -i "s/ExecStart =/ExecStart = \/usr\/bin\/ddns ${serviceCommand}/" /usr/lib/systemd/system/ddns.service
+            _setCurrentIP="$(cat /tmp/ddnsd.ip)"
 
-            enableService ; shift
-        ;;
-        *                   ) break                          ;;
-    esac ; done
+            case "${_ddnsProvider}" in
+                duck            ) duck_ddns       ;;
+                cloudflare      ) cloudflare_ddns ;;
+                *)
+                    echo "Unsupported DDNS provider: ${_ddnsProvider}"
+                    exit 1
+                ;;
+            esac
+        }
+    done
+}
 
-    # Check if the domain name and API token are set
-    if test -z "${domainName}" || test -z "${apiToken}" ; then
-        eventlog "Domain Name and/or API token are required" ; exit 1
-    fi
+function stop_ddnsd () {
 
-    # Check if the verbose flag is set
-    if test "${setVerbose}" = "true" || test "${setVerbose}" = "" ; then setVerbose="false" ; fi
+    echo "Stopping ddnsd..."
 
-    if test "${allowInsecure}" = "true" ; then
-        echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl -kK -
-        eventlog "WARNING: Insecure connection to DuckDNS"
+    Root_Check
+
+    # Stop the ddnsd service and all instances of ddnsd
+    pkill -f ddnsd || { echo "No ddnsd process found to stop." ; exit 0 ; }
+}
+
+function duck_ddns () {
+
+    echo "Configuring DuckDNS..."
+
+    local _duckDNSUrl _serviceType _verboseFlag
+
+    _duckDNSUrl="https://www.duckdns.org/update?domains=${_domainName}&token=${_apiToken}&ip="
+    _verboseFlag="verbose=${_duckDNSVerbose}"
+
+    if test "${_duckDNSInsecure}" = "true" ; then
+        serviceType="-kK"
+        echo "Using insecure connection for DuckDNS."
     else
-        echo url="${duckURL}=${domainName}&token=${apiToken}&ip=&verbose=${setVerbose}" | curl -K -
+        serviceType="-k"
     fi
 
-    case "$(cat ${duckdnslog})" in
-        OK* )
-            eventlog "DuckDNS record updated for subdomain ${domainName}"
-            exit 0
-        ;;
-        KO* )
-            eventlog "Unable to update DuckDNS record for subdomain ${domainName}"
+    # Verify if the domain name is set
+    case "$(echo "url=${_duckDNSUrl}&${_verboseFlag}" | curl ${serviceType})" in
+        *"OK"*              ) echo "DuckDNS update successful for domain ${_domainName}."      ;;
+        *"KO"*              ) echo "DuckDNS update failed for domain ${_domainName}." ; exit 1 ;;
+        *                   )
+            echo "Unexpected response from DuckDNS: $(echo "url=${_duckDNSUrl}&${_verboseFlag}" | ${serviceType})"
             exit 1
         ;;
     esac
+
 }
 
-function cloudflareddns () {
+function cloudflare_ddns () {
 
-    local userEmail cloudflareURL domainName apiToken ipAddress methodType zoneID ifProxy keepFor arrayKeepFor
+    echo "Configuring Cloudflare DNS..."
 
-    cloudflareURL="https://api.cloudflare.com/client/v4/zones"
-    ifProxy="false"
-    keepFor="300"
-    methodType="token"
-    ipAddress="$(curl -s https://icanhazip.com)"
+    # Verify that the Cloudflare email set and is in the correct format
+    [[ "${_cloudflareEmail}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || {
+        echo "Invalid Cloudflare email format: ${_cloudflareEmail}" ; exit 1
+    }
 
-    whatCommand="${*}"
+    # Verify that the Cloudflare Zone ID is set
+    test -n "${_cloudflareZoneID}" || { echo "Please set CLOUDFLARE_ZONE_ID in the configuration." ; exit 1 ; }
 
-    arrayKeepFor=( 60 120 300 900 1800 3600 43600 86400 )
+    local _serviceType _verboseFlag _currentIP _keyUrl _authHeader _cloudflareURL
 
-    domainName="" ; apiToken="" ; userEmail="" ; zoneID=""
+    _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
+    _cloudflareURL="https://api.cloudflare.com/client/v4/zones"
 
-    shift 1
-
-    case "${1}" in
-        -h | --help         ) echo "${helpCloudflare}" ; exit 0   ;;
-    esac
-
-    # Test if IP Address is empty
-    test -n "${ipAddress}" || { envetlog "Unable to get the public ip address" ; exit 1 ; }
-
-    # Parse the command line arguments
-    while true ; do rootcheck ; case "${1}" in
-        -d | --domain       ) domainName="${2}"         ; shift 2 ;;
-        -t | --token        ) apiToken="${2}"           ; shift 2 ;;
-        -e | --email        ) userEmail="${2}"          ; shift 2 ;;
-        -m | --method       ) methodType="${2}"         ; shift 2 ;;
-        -z | --zone         ) zoneID="${2}"             ; shift 2 ;;
-        -p | --proxy        ) ifProxy="${2}"            ; shift 2 ;;
-        -K | --keep         )
-            case "${arrayKeepFor[@]}" in
-                *"${2}"* ) keepFor="${2}" ; shift 2 ;;
-                *        ) eventlog "Invalid keep alive time" ; exit 1 ;;
-            esac
-        ;;
-        -s | --service      )
-
-            serviceCommand="$(echo "${whatCommand}" | sed -E 's/-s|--service//g')"
-
-            echo "${ddnsService}" > /usr/lib/systemd/system/ddns.service
-            sed -i "s/ExecStart =/ExecStart = \/usr\/bin\/ddns ${serviceCommand}/" /usr/lib/systemd/system/ddns.service
-
-            enableService ; shift
-        ;;
-        *                   ) break                          ;;
-    esac ; done
-
-    # Check if email is valid
-    if ! echo "${userEmail}" | grep -qE "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" ; then
-        eventlog "Invalid email address" ; exit 1
-    fi
-
-    # The api token is required
-    if test -z "${apiToken}" ; then eventlog "API token is required" ; exit 1 ; fi
-
-    # Check if the domain name is set
-    if test -z "${domainName}" ; then eventlog "domain name is required" ; exit 1 ; fi
-
-    # Check if the zone ID is set
-    if test -z "${zoneID}" ; then eventlog "Zone ID is required" ; exit 1 ; fi
 
     # Check if method is either token or global
-    if test "${methodType}" = "token" ; then
-        authHeader="Authorization: Bearer"
-    elif test "${methodType}" = "global" ; then
-        authHeader="X-Auth-Key"
-    else
-        eventlog "Invalid method type" ; exit 1
-    fi
-
-    # Check if the api key is active
-
-    verifyKey="$(curl -X GET "https://api.cloudflare.com/client/v4/user/tokens/verify" \
-        --header "Authorization: Bearer ${apiToken}" \
-        --header "Content-Type:  application/json")"
-
-    case "${verifyKey}" in
-        *\"success\":true* )
-            eventlog "Cloudflare API ${apiToken} is active"
-        ;;
-        *\"success\":false* )
-            eventlog "Cloudflare API ${apiToken} is not active" ; exit 1
+    case "${_cloudflareMethod}" in
+        "token"                 ) _authHeader="Authorization: Bearer" ;;
+        "global"                ) _authHeader="X-Auth-Key"            ;;
+        *                       )
+            echo "Invalid Cloudflare method: ${_cloudflareMethod}. Use 'token' or 'global'."
+            exit 1
         ;;
     esac
 
-    recordIdent=$(curl -s -X GET "${cloudflareURL}/${zoneID}{/dns_records?type=A&name=${domainName}}" \
-        --header "X-Auth-Email: ${userEmail}" \
-        --header "${authHeader} ${apiToken}" \
+    verifyKey="$(curl -X GET "$_keyUrl" --header "${_authHeader} ${_apiToken}" \
+        --header "Content-Type:  application/json" | jq -r '.result.status')"
+
+    test "${verifyKey}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
+
+    _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domainName}}" \
+        --header "X-Auth-Email: ${_cloudflareEmail}" \
+        --header "${_authHeader} ${_apiToken}" \
         --header "Content-Type: application/json" | jq -r '.result[].id')
 
-    if test -z "${recordIdent}" ; then eventlog "Unable to get DNS record identity" ; exit 1 ; fi
+    test -n "${_recordID}" || { echo "No DNS record found for domain ${_domainName}." ; exit 1 ; }
 
-    # Update the DNS record and or settings on Cloudflare
-    recordUpdate="$(curl -s -X PATCH "${cloudflareURL}/${zoneID}/dns_records/${recordIdent}" \
-        --header "X-Auth-Email: ${userEmail}" \
-        --header "${authHeader} ${apiToken}" \
+     _recordUpdate="$(curl -s -X PATCH "${_cloudflareURL}/${_cloudflareZoneID}/dns_records/${_recordID}" \
+        --header "X-Auth-Email: ${_cloudflareEmail}" \
+        --header "${_authHeader} ${_apiToken}" \
         --header "Content-Type: application/json" \
         --data "{
             \"type\": \"A\",
-            \"name\": \"${domainName}\",
-            \"content\": \"$ipAddress\",
-            \"ttl\": ${keepFor},
-            \"proxied\": ${ifProxy}
-        }")"
+            \"name\": \"${_domainName}\",
+            \"content\": \"${_setCurrentIP}\",
+            \"ttl\": ${_cloudflareTTL},
+            \"proxied\": ${_cloudflareProxy}
+        }" | jq -r '.success')"
 
-    case "${recordUpdate}" in
-        *\"success\":true* )
-            eventlog "Cloudflare DNS record updated for ${domainName} now pointing to ${ipAddress}"
-            exit 0
-        ;;
-        *\"success\":false* )
-            eventlog "Unable to update Cloudflare DNS record for ${domainName}"
+        test "${_recordUpdate}" = "true" || { echo "${_domainName} dns record update failed." ; exit 1 ; }
+
+}
+
+function check_ip () {
+
+    local _ip
+
+    case "${_ipLookup}" in
+        "icanhazip"         ) _ip="${_ipLookup}.com"   ;;
+        "ipinfo"            ) _ip="${_ipLookup}.io/ip" ;;
+        "ifconfig"          ) _ip="${_ipLookup}.co"    ;;
+        * )
+            echo "Unsupported IP lookup service: ${_ipLookup}"
             exit 1
         ;;
     esac
 
+    # Verify the IP lookup service is reachable
+    ping -c 1 "${_ip}" &> /dev/null || {
+        echo "IP lookup service ${_ip} is not reachable. Please check your network connection."
+        exit 1
+    }
+
+   curl -s "https://${_ip}"
 }
 
-function enableService () {
+function edit_ddnsd_conf () {
 
-    if ! systemctl is-enabled ddns.service ; then
-        systemctl enable --now ddns.service
+    echo "Opening configuration file for editing..."
+
+    Root_Check
+
+    # Open the configuration file in the default editor
+    if test -n "${_editor}" ; then
+        "${_editor}" /etc/ddnsd.conf || {
+            echo "Failed to open configuration file in ${_editor}. Please check if the editor is installed."
+            exit 1
+        }
     else
-        systemctl daemon-reload
-        systemctl restart ddns.service
-    fi
-
-}
-
-function disableService () {
-
-    if systemctl is-enabled ddns.service ; then
-        systemctl disable --now ddns.service
-        rm -vf /usr/lib/systemd/system/ddns.*
-    else
-        eventlog "The ddns service is not enabled"
+        echo "No editor set. Please set the EDITOR environment variable to your preferred text editor."
+        exit 1
     fi
 
 }
 
 set -eo pipefail
 
-appName="ddns"
-version="$(cat /usr/share/doc/${appName}/version)" || version="rc-0.0.1"
-license="MIT License"
+source ddnsd.conf || { echo "Missing configuration /etc/ddnsd.conf!" ; exit 1 ; }
 
-versionInfo="${appName} Version: ${version} - License: ${license}"
+# Global settings
+_ddnsProvider="${DDNS_PROVIDER:-duck}"
+_domainName="${DOMAIN_NAME}"
+_apiToken="${API_TOKEN}"
+_ipLookup="${IP_LOOKUP:-icanhazip}"
 
-ipAddress="$(curl -s https://icanhazip.com)"
+# DuckDNS settings
+_duckDNSInsecure="${DUCKDNS_INSECURE:-false}"
+_duckDNSVerbose="${DUCKDNS_VERBOSE:-false}"
 
-currentIP="/etc/ddns/ddns.ipv4"
+# Cloudflare settings
+_cloudflareEmail="${CLOUDFLARE_EMAIL}"
+_cloudflareMethod="${CLOUDFLARE_METHOD:-token}"
+_cloudflareZoneID="${CLOUDFLARE_ZONE_ID}"
+_cloudflareProxy="${CLOUDFLARE_PROXY:-true}"
+_cloudflareTTL="${CLOUDFLARE_TTL:-300}"
 
-# shellcheck disable=SC2148
-commandList="$(cat <<EOF
-Commands:
-    duck                            Update dynamic DNS record using DuckDNS
-    cloudflare                      Update dynamic DNS record using Cloudflare
-    disable                         Disable the ddns service
-    help                            Show this help message
-    version                         Show the version of the script
+_editor="${EDITOR}"
+
+_appName="ddnsd"
+_appVersion="$(cat /usr/share/doc/${_appName}/version 2>/dev/null || echo "unknown")"
+_appLicense="GPL-3.0"
+
+_versionInfo="$(cat <<EOF
+${_appName} - [ Version: ${_appVersion} ] - License: ${_appLicense}"
 EOF
 )"
 
-# shellcheck disable=SC2034
-# shellcheck disable=SC2154
-helpMain="$(cat <<EOF
-Usage: ddns [command] <options> |args|
+_helpInfo="$(cat <<EOF
+${_versionInfo}
 
-${commandList}
-
-Run 'ddns duck|cloudflare -h or --help' for more information on a command
-
-
-${versionInfo}
-EOF
-)"
-
-# shellcheck disable=SC2034
-helpDuck="$(cat <<EOF
-Usage: ddns duck [options] |args|
-
-Command:
-    duck                            Update dynamic DNS record using DuckDNS
+Usage: ${_appName} [start|stop|restart|status|config|help|version]
 
 Options:
-    -d, --domain <domain>           domain name that you setup on DuckDNS
-    -t, --token <token>             API token that you get from DuckDNS
-    -k, --insecure <true|false>     Allow insecure connections. The default is false
-    -v, --verbose  <true|false>     Show more information. The default is false
-    -s, --service                   Enable either DuckDNS or Cloudflare* to run as a Systemd Timer (Daemon).
-                                    Enabling this for OpenVPN or WireGuard server is recommended.
-    -h, --help                      Show this help message
+    start           Start monitoring for IP changes and update DDNS
+    stop            Stop the ddnsd systemd service
+    restart         Restart the ddnsd systemd service
+    status          Show the status of the ddnsd service
+    config          Show the current configuration
+    help            Show this help message
+    version         Show version information
 
-${versionInfo}
+Version: ${_appVersion}
 EOF
 )"
 
-# shellcheck disable=SC2034
-helpCloudflare="$(cat <<EOF
-Usage: ddns cloudflare [options] |args|
+_statusInfo="$(cat <<EOF
+${_versionInfo}
 
-Command:
-    cloudflare                      Update dynamic DNS record using Cloudflare
+DDNS Provider:          ${_ddnsProvider:-not set}
+Domain Name:            ${_domainName:-not set}
+IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
-Options:
-    -e, --email <email>             Email address that you use to login to Cloudflare
-    -d, --domain <domain>           domain name that you setup on Cloudflare
-    -t, --token <key>               API token that you get from Cloudflare
-    -z, --zone <zone>               The zone ID that you get from Cloudflare
-    -m, --method <token|global>     The method to use to authenticate with Cloudflare
-    -p, --proxy <true|false>        Enable or disable the Cloudflare proxy. The default is false
-    -K, --keep <number>             The time in seconds to keep the DNS record alive. The default is 3600
-    -s, --service                   Enable either DuckDNS or Cloudflare* to run as a Systemd Timer (Daemon).
-                                    Enabling this for OpenVPN or WireGuard server is recommended.
-    -D, --disable                   Disable the ddns service
-    -h, --help                      Show this help message
+Service:                $(systemctl is-active --quiet ddnsd.service || echo "inactive")
+DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null &&
+                            echo "reachable" || echo "unreachable")
 
-${versionInfo}
-EOF
-)"
-
-ddnsService="$(cat <<EOF
-[Unit]
-Description = Update dynamic DNS record for DuckDNS or Cloudflare
-
-[Service]
-Type = simple
-ExecStart =
-# Restart the service every 10 seconds.
-Restart = always
-RestartSec = 10
-# Output to syslog
-StandardOutput = syslog
-StandardError = syslog
-
-[Install]
-WantedBy = multi-user.target
+Configuration File:     /etc/ddnsd.conf
 EOF
 )"
 
 # shellcheck disable=SC2154
 case "${1}" in
-    "duck"          )
-        case "${2}" in -h | --help ) echo "${helpDuck}"       ; exit 0 ; esac ;
-        checkIpChange ; duckdns "${@}"
+    start                   ) start_ddnsd              ;;
+    stop                    ) stop_ddnsd               ;;
+    restart                 )
+        systemctl restart ddnsd.service || {
+            echo "Failed to restart ddnsd service. Please check the service status."
+            exit 1
+        }
     ;;
-    "cloudflare"    )
-        case "${2}" in -h | --help ) echo "${helpCloudflare}" ; exit 0 ; esac ;
-        checkIpChange ; cloudflareddns "${@}"
-    ;;
-    "disable"       ) disableService ; exit 0         ;;
-    "help"          ) echo "${helpMain}" ; exit 0     ;;
-    "version"       ) echo "${versionInfo}" ; exit 0  ;;
-    *               ) echo "Invalid command" ; exit 1 ;;
+    status                  ) echo "${_statusInfo}";;
+    config                  ) edit_ddnsd_conf ;;
+    help                    ) echo "${_helpInfo}";;
+    version                 ) echo "${_versionInfo}";;
 esac
+
+exit 0
