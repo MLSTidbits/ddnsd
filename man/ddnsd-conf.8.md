@@ -1,9 +1,9 @@
 ---
-title: DDNSDD CONFIG
+title: DDNSD CONFIG
 section: 8
 header: "Manual"
 author: Michael L. Schaecher <MichaelLeeSchaecher@gmail.com>
-footer: DDNSDD CONFIG
+footer: DDNSD CONFIG
 version: 0.8.6
 date: 2025-06-21
 ---
@@ -175,3 +175,11 @@ The verbose setting for DuckDNS. If set to _true_, the client will log additiona
 ---
 
 : Example: _DUCKDNS_VERBOSE=true_
+
+# SEE ALSO
+
+_ddnsd_(8)
+
+# COPYRIGHT
+
+Copyright (c) under the terms of the [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.en.html) license.
