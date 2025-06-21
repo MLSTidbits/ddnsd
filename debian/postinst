@@ -3,17 +3,10 @@
 set -eo pipefail
 
 case "${1}" in
-    configure|upgrade|reinstall )
-        if systemctl is-active --quiet ddnsd.service ;
-            then systemctl daemon-reload
-        else
-            echo "No ddns.service was found."
-            echo "To re-enable the please rerun the ddns command you used."
-        fi
+    configure|upgrade|reinstall     )
+        systemctl is-active --quiet ddnsd.service || systemctl enable --now ddnsd.service
     ;;
-
-    *)
-        echo "postinst called with unknown argument: $1" >&2
-        exit 1
+    *                               )
+        echo "postinst called with unknown argument: $1" >&2 ; exit 1
     ;;
 esac
