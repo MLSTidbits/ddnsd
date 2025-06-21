@@ -310,7 +310,7 @@ DDNS Provider:          ${_ddnsProvider:-not set}
 Domain Name:            ${_domainName:-not set}
 IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
-Service:                $(systemctl is-active --quiet ddnsd.service || echo "inactive")
+Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
 DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null &&
                             echo "reachable" || echo "unreachable")
 
