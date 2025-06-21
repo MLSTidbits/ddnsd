@@ -324,9 +324,7 @@ case "${1}" in
     stop                    ) stop_ddnsd             ;;
     restart                 )
         systemctl restart ddnsd.service || {
-            echo "Failed to restart ddnsd service. Please check the service status."
-            exit 1
-        }
+            event_log "error" "Failed to restart ddnsd service." ; exit 1 ; }
     ;;
     status                  ) echo "${_statusInfo}"  ;;
     config                  ) edit_ddnsd_conf        ;;
