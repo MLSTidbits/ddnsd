@@ -69,7 +69,7 @@ done
 # Generate md5sums
 cd "$BUILD_DIR"
 find . -type f ! -path './DEBIAN/md5sums' -exec md5sum "{}" + |
-    sed -e '/\.\/DEBIAN\//d' -e 's| \./| |' > DEBIAN/md5sums
+    sed -e '/\.\/DEBIAN\//d' -e 's| \./| \/|' > DEBIAN/md5sums
 cd - >/dev/null
 
 # Build package
