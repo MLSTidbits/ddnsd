@@ -4,7 +4,6 @@ After = network.target
 
 [Service]
 Type = simple
-User = ddnsd
 LogLevelMax = notice
 EnvironmentFile = /etc/ddnsd.conf
 ExecStart = /usr/bin/ddnsd start

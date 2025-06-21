@@ -10,11 +10,6 @@ case "${1}" in
             echo "No ddns.service was found."
             echo "To re-enable the please rerun the ddns command you used."
         fi
-
-        # Check if the user exists
-        if ! getent passwd ddnsd >/dev/null ; then
-            useradd --system --no-create-home --shell /usr/sbin/nologin ddnsd
-        fi
     ;;
 
     *)
