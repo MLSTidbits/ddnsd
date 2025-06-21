@@ -116,7 +116,7 @@ function stop_ddnsd () {
 
 function duck_ddnsd () {
 
-    echo "Configuring DuckDNS..."
+    event_log "info" "Configuring DuckDNS for domain ${_domainName}..."
 
     local _duckDNSUrl _serviceType _verboseFlag
 
@@ -125,17 +125,22 @@ function duck_ddnsd () {
 
     if test "${_duckDNSInsecure}" = "true" ; then
         serviceType="-kK"
-        echo "Using insecure connection for DuckDNS."
+        event_log "warning" "Using insecure connection for DuckDNS updates. This is not recommended."
     else
         serviceType="-k"
     fi
 
     # Verify if the domain name is set
     case "$(echo "url=${_duckDNSUrl}&${_verboseFlag}" | curl ${serviceType})" in
-        *"OK"*              ) echo "DuckDNS update successful for domain ${_domainName}."      ;;
-        *"KO"*              ) echo "DuckDNS update failed for domain ${_domainName}." ; exit 1 ;;
+        *"OK"*              )
+            event_log "info" "DuckDNS update successful for domain ${_domainName}."
+        ;;
+        *"KO"*              )
+            event_log "error" "DuckDNS update failed for domain ${_domainName}."
+            exit 1
+        ;;
         *                   )
-            echo "Unexpected response from DuckDNS: $(echo "url=${_duckDNSUrl}&${_verboseFlag}" | ${serviceType})"
+            event_log "error" "Unexpected response from DuckDNS for domain ${_domainName}."
             exit 1
         ;;
     esac
@@ -211,18 +216,19 @@ function check_ip () {
         "ipinfo"            ) _ip="${_ipLookup}.io/ip" ;;
         "ifconfig"          ) _ip="${_ipLookup}.co"    ;;
         * )
-            echo "Unsupported IP lookup service: ${_ipLookup}"
+            event_log "error" "Unsupported IP lookup service: ${_ipLookup}"
             exit 1
         ;;
     esac
 
     # Verify the IP lookup service is reachable
     ping -c 1 "${_ip}" &> /dev/null || {
-        echo "IP lookup service ${_ip} is not reachable. Please check your network connection."
+        event_log "error" "IP lookup service ${_ip} is not reachable. Please check your network connection."
         exit 1
     }
 
-   curl -s "https://${_ip}"
+    event_log "info" "Using IP lookup service: ${_ip}"
+    curl -s "https://${_ip}"
 }
 
 function edit_ddnsd_conf () {
