@@ -1,103 +1,47 @@
 ---
-title: "DDNS"
+title: "DDNSDD"
 section: 8
-header: "DDNS Manual"
-author: Michael L. Schaecher <github.com/MichaelSchaecher>
-footer: DDNS
-version: 0.15.1
-date: 2024-12-13
+header: "Manual"
+author: Michael L. Schaecher <MichaelLeeSchaecher@gmail.com>
+footer: DDNSDD
+version: 0.8.6
+date: 2025-06-21
 ---
 
 # NAME
 
-ddns - Dynamic DNS (Domain Name System) client
+ddnsd - Dynamic DNS (Domain Name Service) Daemon
 
 # SYNOPSIS
 
-**ddns** [*command*] \<options\> args..
+_ddnsd_ ( start | stop | restart | status | version | help )
 
 # DESCRIPTION
 
-**ddns** is a client for updating dynamic DNS records for a domain hosted on *Cloudflare* or a subdomain hosted on *DuckDNS*. It can be used to update the IP address of a domain or subdomain when the IP address of the host changes. This is useful if your internet service provider doesn't provide a static IP address.
+_ddnsd_ is a client for updating dynamic DNS records for a domain hosted on _Cloudflare_ or a subdomain hosted on _DuckDNS_. It can be used to update the IP address of a domain or subdomain when the IP address of the host changes. This is useful if your internet service provider doesn't provide a static IP address.
 
-# COMMANDS
+_start_
+: Starts the DDNSD client service. This will run the client in the background and update the DNS records periodically.
 
-**duck** [*options*] *<args>* ...
-:   Update a DuckDNS subdomain.
+_stop_
+: Stops the DDNSD client service. This will stop the client from running in the background and updating the DNS records.
 
-**cloudflare** [*options*] *<args>* ...
-:   Update a Cloudflare domain.
+_restart_
+: Restarts the DDNSD client service. This will stop the client and start it again in the background.
 
-**disable**
-:   Disable the Systemd Timer for updating the DNS record.
+_status_
+: Displays the status of the DDNSD client service. This will show whether the client is running or not, and if it is running, how long it has been running.
 
-**help**
-:   Show brief help message.
+_version_
+: Displays the version of the DDNSD client.
 
-**version**
-:   Show version information.
+_help_
+: Displays the help message for the DDNSD client. This will show the available commands and options.
 
-# OPTIONS
+# SEE ALSO
 
-## Global Options
-
-**-d**, **--domain** *my.domain.com*
-:   The domain or subdomain to update. For DuckDNS this is the subdomain i.e `example.duckdns.org`. For Cloudflare this is the domain that you have registered with Cloudflare i.e `example.com`.
-
-**-t**, **--token** *token*
-:   The API token for the DuckDNS or Cloudflare service. For Cloudflare it it recommended to not use the global API, but to create a new API token with the necessary permissions for the domain you want to update.
-
-**-s**, **--service**
-:   Create a Systemd Timer to update the DNS record at regular intervals. This is only available on Linux systems with Systemd.
-
-**-D**, **--disable**
-:   Disable the Systemd Timer.
-
-**-h**, **--help**
-:   Show a more detailed help message for either duck or cloudflare commands.
-
-## Cloudflare Options
-
-**-e**, **--email** *email@address.con*
-:   The email address associated with your Cloudflare account.
-
-**-z**, **--zone** *Zone ID*
-:   The zone ID for the domain you want to update. This is only required for Cloudflare.
-
-**-p**, **--proxy** *y|n*
-:   Enable proxying through Cloudflare. WARNING: This may conflict with some services and/or devices.
-
-**-k**, **--keep**
-:   How long to keep the record active in seconds. Default is 300 seconds (5 minutes). See **KEEPING THE RECORD ACTIVE** for more information.
-
-## DuckDNS Options
-
-**-i**, **--insecure** y|n
-:   Allow insecure connections to the DuckDNS API. This is not recommended. The default is `false`.
-
-**-v**, **--verbose**
-:   Enable verbose output to give more information about the update process.
-
-# KEEPING THE RECORD ACTIVE
-
-When updating a DNS record, the record is set to be active for a certain amount of time. This is to prevent the record from being deleted if the client fails to update the record in the future. The default time is 300 seconds (5 minutes). This can be changed with the `-k` or `--keep` option.
-
-> **NOTE**: The exactable times are [60, 120, 300, 900, 1800, 3600, 43200, 86400] seconds or [1m, 2m, 5m, 15m, 30m, 1h, 12h, 1d] minutes.
-
-# EXAMPLES
-
-To update a DNS record for a domain hosted on Cloudflare setting the record to be active for 1 hour:
-
-```bash
-sudo ddns cloudflare -d example.com -t <API_TOKEN> -e <EMAIL> -z <ZONE_ID> -k 3600
-```
-
-To update a DNS record for a subdomain hosted on DuckDNS:
-
-```bash
-sudo ddns duck -d example.duckdns.org -t <API_TOKEN>
-```
+_ddnsd-config_(8)
 
 # COPYRIGHT
 
-DDNS is licensed under the MIT License Copyright (c) 2024 Michael L. Schaecher
+Copyright (c) under the terms of the [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.en.html) license.
