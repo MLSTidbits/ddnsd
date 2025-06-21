@@ -89,8 +89,8 @@ function start_ddnsd () {
             event_log "info" "Detected IP change: ${_setCurrentIP}"
 
             case "${_ddnsProvider}" in
-                duck            ) duck_ddns       ;;
-                cloudflare      ) cloudflare_ddns ;;
+                duck            ) duck_ddnsd       ;;
+                cloudflare      ) cloudflare_ddnsd ;;
                 *)
                     echo "Unsupported DDNS provider: ${_ddnsProvider}"
                     exit 1
@@ -114,7 +114,7 @@ function stop_ddnsd () {
     pkill -f ddnsd || { echo "No ddnsd process found to stop." ; exit 0 ; }
 }
 
-function duck_ddns () {
+function duck_ddnsd () {
 
     echo "Configuring DuckDNS..."
 
@@ -142,7 +142,7 @@ function duck_ddns () {
 
 }
 
-function cloudflare_ddns () {
+function cloudflare_ddnsd () {
 
     event_log "info" "Configuring Cloudflare for domain ${_domainName}..."
 
