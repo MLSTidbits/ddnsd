@@ -23,8 +23,41 @@ function Root_Check () {
 
 }
 
+# shellcheck disable=SC2317
+function sign_handler () {
+
+    local _signal; _signal="${1:-SIGINT}"
+
+    case "${_signal}" in
+        SIGINT|SIGTERM|SIGQUIT  )
+            event_log "info" "Received signal: ${_signal}. Stopping ddnsd service..."
+        ;;
+        *                       )
+            event_log "warning" "Received unknown signal: ${_signal}"
+        ;;
+    esac
+
+    exit 0
+
+}
+
+function event_log () {
+
+    local _eventType="${1:-info}"
+    local _eventMessage="${2:-No message provided}"
+
+    case "${_eventType}" in
+        info            ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
+        warning         ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
+        error           ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
+        critical        ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
+        *               ) logger -t "${_appName}" -p user.unknown "${_eventMessage}" ;;
+    esac
+
+}
+
 function start_ddnsd () {
-    echo "Starting ddnsd..."
+    event_log "info" "Starting ddnsd service..."
 
     test -n "${_domainName}" || {
         echo "Domain name is not set. Please set DOMAIN_NAME in the configuration." ; exit 1 ;
@@ -36,30 +69,24 @@ function start_ddnsd () {
 
     Root_Check
 
-    # Monitor for updates
+    event_log "info" "Checking IP address ... $(check_ip)"
+
     while true ; do
+        _currentIP="$(check_ip)" || {
+        event_log "error" \
+        "IP lookup service ${_ipLookup} is not reachable. Please check your network connection."
+        exit 1
+        }
 
-        # Check for changes to the IP address using a subshell
-        (
-            while true ; do
-                _currentIP="$(check_ip)"
-                _savedIP="$(cat /tmp/ddnsd.ip)"
+        _savedIP="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
-                if test "${_savedIP}" != "${_currentIP}" ; then
-                    echo "IP changed: ${_currentIP}"
-                    echo "${_currentIP}" > /tmp/ddnsd.ip
-                fi
-                sleep 1
-            done
-        ) &
-
-        # if test "${_savedIP}" != "${_currentIP}" ; then
-        #     echo "IP changed: ${_currentIP}"
-        #     echo "${_currentIP}" > /tmp/ddnsd.ip
-
-        inotifywait -m -e modify -t 0 /tmp/ddnsd.ip && {
+        if test "${_savedIP}" != "${_currentIP}" ; then
+            event_log "info" "IP address changed from ${_savedIP} to ${_currentIP}"
+            echo "${_currentIP}" > /tmp/ddnsd.ip
 
             _setCurrentIP="$(cat /tmp/ddnsd.ip)"
+
+            event_log "info" "Detected IP change: ${_setCurrentIP}"
 
             case "${_ddnsProvider}" in
                 duck            ) duck_ddns       ;;
@@ -69,13 +96,17 @@ function start_ddnsd () {
                     exit 1
                 ;;
             esac
-        }
+
+            event_log "info" "DDNS update completed for ${_domainName} with IP ${_setCurrentIP}"
+        fi
+
+        sleep 5 ; continue
     done
 }
 
 function stop_ddnsd () {
 
-    echo "Stopping ddnsd..."
+    event_log "info" "Stopping ddnsd service..."
 
     Root_Check
 
@@ -113,7 +144,7 @@ function duck_ddns () {
 
 function cloudflare_ddns () {
 
-    echo "Configuring Cloudflare DNS..."
+    event_log "info" "Configuring Cloudflare for domain ${_domainName}..."
 
     # Verify that the Cloudflare email set and is in the correct format
     [[ "${_cloudflareEmail}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || {
@@ -144,6 +175,8 @@ function cloudflare_ddns () {
 
     test "${verifyKey}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
 
+    event_log "info" "Verified Cloudflare API token = ${verifyKey}"
+
     _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domainName}}" \
         --header "X-Auth-Email: ${_cloudflareEmail}" \
         --header "${_authHeader} ${_apiToken}" \
@@ -164,6 +197,8 @@ function cloudflare_ddns () {
         }" | jq -r '.success')"
 
         test "${_recordUpdate}" = "true" || { echo "${_domainName} dns record update failed." ; exit 1 ; }
+
+    event_log "info" "Cloudflare DNS record updated successfully for ${_domainName} with IP ${_setCurrentIP}."
 
 }
 
@@ -230,7 +265,10 @@ _cloudflareZoneID="${CLOUDFLARE_ZONE_ID}"
 _cloudflareProxy="${CLOUDFLARE_PROXY:-true}"
 _cloudflareTTL="${CLOUDFLARE_TTL:-300}"
 
-_editor="${EDITOR}"
+_editor="${EDITOR:-nano}"
+
+# Trap errors and log them
+trap sign_handler SIGINT SIGTERM SIGQUIT
 
 _appName="ddnsd"
 _appVersion="$(cat /usr/share/doc/${_appName}/version 2>/dev/null || echo "unknown")"
@@ -276,18 +314,18 @@ EOF
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                   ) start_ddnsd              ;;
-    stop                    ) stop_ddnsd               ;;
+    start                   ) start_ddnsd            ;;
+    stop                    ) stop_ddnsd             ;;
     restart                 )
         systemctl restart ddnsd.service || {
             echo "Failed to restart ddnsd service. Please check the service status."
             exit 1
         }
     ;;
-    status                  ) echo "${_statusInfo}";;
-    config                  ) edit_ddnsd_conf ;;
-    help                    ) echo "${_helpInfo}";;
-    version                 ) echo "${_versionInfo}";;
+    status                  ) echo "${_statusInfo}"  ;;
+    config                  ) edit_ddnsd_conf        ;;
+    help                    ) echo "${_helpInfo}"    ;;
+    version                 ) echo "${_versionInfo}" ;;
 esac
 
 exit 0
