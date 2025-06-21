@@ -252,7 +252,7 @@ function edit_ddnsd_conf () {
 
 set -eo pipefail
 
-source ddnsd.conf || { echo "Missing configuration /etc/ddnsd.conf!" ; exit 1 ; }
+source /etc/ddnsd.conf || { echo "Missing configuration /etc/ddnsd.conf!" ; exit 1 ; }
 
 # Global settings
 _ddnsProvider="${DDNS_PROVIDER:-duck}"
