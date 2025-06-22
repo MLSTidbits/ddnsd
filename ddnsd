@@ -193,7 +193,7 @@ function cloudflare_ddnsd () {
 
         test "${_recordUpdate}" = "true" || { echo "${_domainName} dns record update failed." ; exit 1 ; }
 
-    event_log "info" "Cloudflare DNS record updated successfully for ${_domainName} with IP ${_setCurrentIP}."
+    event_log "info" "Cloudflare DNS record updated successfully."
 
 }
 
