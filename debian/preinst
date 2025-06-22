@@ -3,7 +3,7 @@
 set -eo pipefail
 
 case "${1}" in
-    configure|upgrade|reinstall     )
+    configure|upgrade|reinstall|install     )
         mv /etc/ddnsd.conf /etc/ddnsd.conf.bak || true
     ;;
     *                               )
