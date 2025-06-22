@@ -186,7 +186,7 @@ function cloudflare_ddnsd () {
         --data "{
             \"type\": \"A\",
             \"name\": \"${_domainName}\",
-            \"content\": \"${_setCurrentIP}\",
+            \"content\": \"${_currentIP}\",
             \"ttl\": ${_cloudflareTTL},
             \"proxied\": ${_cloudflareProxy}
         }" | jq -r '.success')"
