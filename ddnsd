@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Check if the script is run as root
-function Root_Check () {
+function root_check () {
 
     (( "$(id -u)" == 0 )) || { echo "This script must be run as root" ; exit 1 ; }
 
@@ -47,17 +47,19 @@ function event_log () {
     local _eventMessage="${2:-No message provided}"
 
     case "${_eventType}" in
-        info            ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
-        warning         ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
-        error           ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
-        critical        ) logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}" ;;
-        *               ) logger -t "${_appName}" -p user.unknown "${_eventMessage}" ;;
+        info|warning|error|critical )
+            logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}"
+        ;;
+        *                           )
+            logger -t "${_appName}" -p user.unknown "${_eventMessage}"
+        ;;
     esac
 
 }
 
 function start_ddnsd () {
-    event_log "info" "Starting ddnsd service..."
+
+    root_check ; event_log "info" "Starting ddnsd service..."
 
     test -n "${_domainName}" || {
         echo "Domain name is not set. Please set DOMAIN_NAME in the configuration." ; exit 1 ;
@@ -67,37 +69,27 @@ function start_ddnsd () {
         echo "API token is not set. Please set API_TOKEN in the configuration." ; exit 1 ;
     }
 
-    Root_Check
-
     event_log "info" "Checking IP address ... $(check_ip)"
 
     while true ; do
-        _currentIP="$(check_ip)" || {
-        event_log "error" \
-        "IP lookup service ${_ipLookup} is not reachable. Please check your network connection."
-        exit 1
-        }
+        _currentIP="$(check_ip)" || { event_log "error" "IP lookup service ${_ipLookup} is not reachable!" ; exit 1 ;  }
 
         _savedIP="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
         if test "${_savedIP}" != "${_currentIP}" ; then
-            event_log "info" "IP address changed from ${_savedIP} to ${_currentIP}"
+            event_log "info" "IP address changed: ${_savedIP} -> ${_currentIP}"
             echo "${_currentIP}" > /tmp/ddnsd.ip
-
-            _setCurrentIP="$(cat /tmp/ddnsd.ip)"
-
-            event_log "info" "Detected IP change: ${_setCurrentIP}"
 
             case "${_ddnsProvider}" in
                 duck            ) duck_ddnsd       ;;
                 cloudflare      ) cloudflare_ddnsd ;;
-                *)
+                *               )
                     echo "Unsupported DDNS provider: ${_ddnsProvider}"
                     exit 1
                 ;;
             esac
 
-            event_log "info" "DDNS update completed for ${_domainName} with IP ${_setCurrentIP}"
+            event_log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
         fi
 
         sleep 5 ; continue
@@ -106,9 +98,7 @@ function start_ddnsd () {
 
 function stop_ddnsd () {
 
-    event_log "info" "Stopping ddnsd service..."
-
-    Root_Check
+    root_check ; event_log "info" "Stopping ddnsd service..."
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || { echo "No ddnsd process found to stop." ; exit 0 ; }
@@ -212,10 +202,10 @@ function check_ip () {
     local _ip
 
     case "${_ipLookup}" in
-        "icanhazip"         ) _ip="${_ipLookup}.com"   ;;
-        "ipinfo"            ) _ip="${_ipLookup}.io/ip" ;;
-        "ifconfig"          ) _ip="${_ipLookup}.co"    ;;
-        * )
+        "icanhazip"             ) _ip="${_ipLookup}.com"   ;;
+        "ipinfo"                ) _ip="${_ipLookup}.io/ip" ;;
+        "ifconfig"              ) _ip="${_ipLookup}.co"    ;;
+        *                       )
             event_log "error" "Unsupported IP lookup service: ${_ipLookup}"
             exit 1
         ;;
@@ -235,7 +225,7 @@ function edit_ddnsd_conf () {
 
     echo "Opening configuration file for editing..."
 
-    Root_Check
+    root_check
 
     # Open the configuration file in the default editor
     if test -n "${_editor}" ; then
@@ -250,9 +240,26 @@ function edit_ddnsd_conf () {
 
 }
 
+function restart_ddnsd () {
+
+    root_check ; event_log "info" "Restarting ddnsd service..."
+
+    # Remove the IP address file if it exists before restarting
+    rm -f ${_ddnsdIPFile} || event_log "warning" "Failed to remove IP address file ${_ddnsdIPFile}. Continuing..."
+    systemctl restart ddnsd.service || { event_log "error" "Failed to restart ddnsd service." ; exit 1 ; }
+
+}
+
 set -eo pipefail
 
-source /etc/ddnsd.conf || { echo "Missing configuration /etc/ddnsd.conf!" ; exit 1 ; }
+_appName="ddnsd"
+_appVersion="$(cat /usr/share/doc/${_appName}/version 2>/dev/null || echo "unknown")"
+_appLicense="GPL-3.0"
+
+_ddnsdConfig="/etc/ddnsd.conf"
+
+# shellcheck disable=SC1090
+source ${_ddnsdConfig} || { echo "Missing configuration ${_ddnsdConfig}!" ; exit 1 ; }
 
 # Global settings
 _ddnsProvider="${DDNS_PROVIDER:-duck}"
@@ -273,12 +280,10 @@ _cloudflareTTL="${CLOUDFLARE_TTL:-300}"
 
 _editor="${EDITOR:-nano}"
 
+_ddnsdIPFile="/tmp/ddnsd.ip"
+
 # Trap errors and log them
 trap sign_handler SIGINT SIGTERM SIGQUIT
-
-_appName="ddnsd"
-_appVersion="$(cat /usr/share/doc/${_appName}/version 2>/dev/null || echo "unknown")"
-_appLicense="GPL-3.0"
 
 _versionInfo="$(cat <<EOF
 ${_appName} - [ Version: ${_appVersion} ] - License: ${_appLicense}"
@@ -314,22 +319,23 @@ Service:                $(systemctl is-active --quiet ddnsd.service && echo "act
 DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null &&
                             echo "reachable" || echo "unreachable")
 
-Configuration File:     /etc/ddnsd.conf
+Configuration File:     ${_ddnsdConfig}
 EOF
 )"
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                   ) start_ddnsd            ;;
-    stop                    ) stop_ddnsd             ;;
-    restart                 )
-        systemctl restart ddnsd.service || {
-            event_log "error" "Failed to restart ddnsd service." ; exit 1 ; }
-    ;;
-    status                  ) echo "${_statusInfo}"  ;;
-    config                  ) edit_ddnsd_conf        ;;
-    help                    ) echo "${_helpInfo}"    ;;
-    version                 ) echo "${_versionInfo}" ;;
+    start                       ) start_ddnsd            ;;
+    stop                        ) stop_ddnsd             ;;
+    restart                     ) restart_ddnsd          ;;
+    status                      ) echo "${_statusInfo}"  ;;
+    config                      ) edit_ddnsd_conf        ;;
+    help                        ) echo "${_helpInfo}"    ;;
+    version                     ) echo "${_versionInfo}" ;;
+    *                           )
+        echo "Invalid option: ${1}"
+        echo "Use '${_appName} help' for usage information."
+        exit 1
 esac
 
 exit 0
