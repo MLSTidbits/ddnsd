@@ -217,7 +217,6 @@ function check_ip () {
         exit 1
     }
 
-    event_log "info" "Using IP lookup service: ${_ip}"
     curl -s "https://${_ip}"
 }
 
