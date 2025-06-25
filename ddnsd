@@ -344,7 +344,7 @@ Domain Name:            ${_domainName:-not set}
 IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
 Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "${_domainName}" 2> /dev/null && echo "reachable" || echo "unreachable")
+DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null && echo "reachable" || echo "unreachable")
 
 Configuration File:     ${_ddnsdConfig}
 EOF
