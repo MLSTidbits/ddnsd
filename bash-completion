@@ -9,8 +9,20 @@ _ddnsd_complete () {
 
     # Main commands
     commands="start stop restart status config help version"
+    conf_opt="cloudflare duckdns -h --help"
 
     mapfile -t COMPREPLY < <(compgen -W "${commands}" -- "${cur}")
+    case "${prev}" in
+        start|stop|restart|status|help|version)
+            COMPREPLY=()
+        ;;
+        config)
+            mapfile -t COMPREPLY < <(compgen -W "${conf_opt}" -- "${cur}")
+        ;;
+        *)
+            mapfile -t COMPREPLY < <(compgen -c -- "${cur}")
+            ;;
+    esac
 }
 
 # Register the completion function for ddnsd

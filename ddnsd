@@ -226,6 +226,14 @@ function edit_ddnsd_conf () {
 
     root_check
 
+    case "${1}" in
+        cloudflare|duckddns     ) cp -av /usr/share/${_appName}/example.conf /etc/"${1}".conf ;;
+        --help|-h               ) echo "${_configInfo}" ; exit 0                              ;;
+        *                       )
+            echo "Invalid option: ${1}. Use 'config --help' for usage information."
+        ;;
+    esac
+
     # Open the configuration file in the default editor
     if test -n "${_editor}" ; then
         "${_editor}" /etc/ddnsd.conf || {
@@ -299,9 +307,23 @@ Options:
     stop            Stop the ddnsd systemd service
     restart         Restart the ddnsd systemd service
     status          Show the status of the ddnsd service
-    config          Show the current configuration
+    config          Show the current configuration (use 'config <provider>' to edit)
     help            Show this help message
     version         Show version information
+
+Version: ${_appVersion}
+EOF
+)"
+
+_configInfo="$(cat <<EOF
+${_versionInfo}
+
+Usage: ${_appName} config [cloudflare|duckdns|--help|-h]
+
+Options:
+    cloudflare      Copy the example Cloudflare configuration to /etc/${_appName}.conf
+    duckdns         Copy the example DuckDNS configuration to /etc/${_appName}.conf
+    --help|-h       Show this help message
 
 Version: ${_appVersion}
 EOF
@@ -322,13 +344,15 @@ Configuration File:     ${_ddnsdConfig}
 EOF
 )"
 
+
+
 # shellcheck disable=SC2154
 case "${1}" in
     start                       ) start_ddnsd            ;;
     stop                        ) stop_ddnsd             ;;
     restart                     ) restart_ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
-    config                      ) edit_ddnsd_conf        ;;
+    config                      ) edit_ddnsd_conf "$@"   ;;
     help                        ) echo "${_helpInfo}"    ;;
     version                     ) echo "${_versionInfo}" ;;
     *                           )

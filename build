@@ -24,9 +24,10 @@ echo -e "\nBuilding ${PACKAGE_NAME} ${PACKAGE_VERSION} (${PACKAGE_ARCH})"
 mkdir -p \
     "$BUILD_DIR"/DEBIAN \
     "$BUILD_DIR"/usr/bin \
-    "$BUILD_DIR"/etc \
+    "$BUILD_DIR"/etc/zswapd.d \
     "$BUILD_DIR"/usr/lib/systemd/system \
     "$BUILD_DIR"/usr/share/man/man8 \
+    "$BUILD_DIR"/usr/share/"$PACKAGE_NAME" \
     "$BUILD_DIR"/usr/share/doc/"$PACKAGE_NAME" \
     "$BUILD_DIR"/usr/share/bash-completion/completions
 
