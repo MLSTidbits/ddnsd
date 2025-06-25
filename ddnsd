@@ -277,21 +277,6 @@ _editor="${EDITOR:-nano}"
 # shellcheck disable=SC1090
 source ${_ddnsdConfig} || { event_log "error" "Failed to source configuration file ${_ddnsdConfig}!" ; exit 1 ; }
 
-if test -f /etc/ddnsd.conf.d/cloudflare.conf ; then
-    source /etc/ddnsd.conf.d/cloudflare.conf 2>/dev/null
-else
-    cp -av /usr/share/${_appName}/example.conf /etc/ddnsd.conf.d/cloudflare.conf
-    $_editor /etc/ddnsd.conf.d/cloudflare.conf && restart_ddnsd
-fi
-
-if test -f /etc/ddnsd.conf.d/duckdns.conf ; then
-    source /etc/ddnsd.conf.d/duckdns.conf 2>/dev/null
-else
-    cp -av /usr/share/${_appName}/example.conf /etc/ddnsd.conf.d/duckdns.conf
-    $_editor /etc/ddnsd.conf.d/duckdns.conf && restart_ddnsd
-fi
-
-
 # Global settings
 _ddnsProvider="${DDNS_PROVIDER:-duck}"
 _domainName="${DOMAIN_NAME}"
