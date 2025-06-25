@@ -4,10 +4,9 @@ set -eo pipefail
 
 case "${1}" in
     configure|upgrade|reinstall|install     )
-        mv /etc/ddnsd.conf.bak /etc/ddnsd.conf || true
         systemctl is-active --quiet ddnsd.service || systemctl enable --now ddnsd.service
     ;;
-    *                               )
+    *                                       )
         echo "postinst called with unknown argument: $1" >&2 ; exit 1
     ;;
 esac
