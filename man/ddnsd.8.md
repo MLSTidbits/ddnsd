@@ -32,11 +32,27 @@ _restart_
 _status_
 : Displays the status of the DDNSD client service. This will show whether the client is running or not, and if it is running, how long it has been running.
 
+_config_ [ cloudflare | duckdns | -h | --help ]
+: Edit the configuration file for the DDNSD client. This command allows you to set up or modify the settings for either Cloudflare or DuckDNS. See **CONFIG OPTIONS** below for more details.
+
 _version_
 : Displays the version of the DDNSD client.
 
 _help_
 : Displays the help message for the DDNSD client. This will show the available commands and options.
+
+## CONFIG OPTIONS
+
+The configuration file for the DDNSD client is located at `/etc/ddnsd.conf`. This file is not able to be edited directly, however the configuration that is used by the client can be modified with following options:
+
+_cloudflare_
+: Saves the configuration for Cloudflare as cloudflare.conf in the `/etc/ddnsd.conf.d/` directory. This file contains the settings for updating DNS records.
+
+_duckdns_
+: Saves the configuration for DuckDNS as duckdns.conf in the `/etc/ddnsd.conf.d/` directory. This file contains the settings for updating subdomain records.
+
+_h_ or _--help_
+: Displays the help message for the configuration options. This will show the available options and their descriptions
 
 # SEE ALSO
 
