@@ -20,7 +20,7 @@ _ddnsd_complete () {
             mapfile -t COMPREPLY < <(compgen -W "${conf_opt}" -- "${cur}")
         ;;
         *)
-            mapfile -t COMPREPLY < <(compgen -c -- "${cur}")
+            mapfile -t COMPREPLY < <(compgen -w "${commands}" -- "${cur}")
             ;;
     esac
 }
