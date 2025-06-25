@@ -1,9 +1,9 @@
 <div align="right">
     <img
-        src="images/logo.svg"
+        src="images/logo.png"
         alt="ddnsd logo"
         width="auto"
-        height="300"
+        height="360"
     />
 </div>
 
