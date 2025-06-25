@@ -224,7 +224,7 @@ function edit_ddnsd_conf () {
 
     echo "Opening configuration file for editing..."
 
-    root_check
+    root_check ; shift
 
     case "${1}" in
         cloudflare|duckdns      )
