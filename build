@@ -38,6 +38,7 @@ cp -av README.md "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/readme.md"
 cp -av CODE_OF_CONDUCT.md "$BUILD_DIR/usr/share/doc/$PACKAGE_NAME/code_of_conduct.md"
 
 cp -av bash-completion "$BUILD_DIR/usr/share/bash-completion/completions/$PACKAGE_NAME"
+cp -av examples.conf "$BUILD_DIR/usr/share/$PACKAGE_NAME/"
 
 cp -av ./*.service "$BUILD_DIR/usr/lib/systemd/system/"
 cp -av $PACKAGE_NAME "$BUILD_DIR/usr/bin/"
