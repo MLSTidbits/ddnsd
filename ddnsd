@@ -227,22 +227,29 @@ function edit_ddnsd_conf () {
     root_check
 
     case "${1}" in
-        cloudflare|duckddns     ) cp -av /usr/share/${_appName}/example.conf /etc/"${1}".conf ;;
-        --help|-h               ) echo "${_configInfo}" ; exit 0                              ;;
+        cloudflare|duckdns      )
+            if test -f /etc/"${1}".conf.d/$1.conf ; then
+                event_log "info" "Configuration file for ${1} already exists. Opening for editing..."
+            else
+                cp -av /usr/share/${_appName}/example.conf /etc/"${1}".conf
+            fi
+        ;;
+        --help|-h               ) echo "${_configInfo}" ; exit 0 ;;
         *                       )
             echo "Invalid option: ${1}. Use 'config --help' for usage information."
+            exit 1
         ;;
     esac
 
     # Open the configuration file in the default editor
     if test -n "${_editor}" ; then
-        "${_editor}" /etc/ddnsd.conf || {
-            echo "Failed to open configuration file in ${_editor}. Please check if the editor is installed."
+        "${_editor}" /etc/ddnsd.conf.d/"${1}".conf || {
+            event_log "error" "Failed to open configuration file for ${1} in ${_editor}."
             exit 1
         }
     else
-        echo "No editor set. Please set the EDITOR environment variable to your preferred text editor."
-        exit 1
+        event_log "error" "No editor set. Please set the EDITOR environment variable."
+        exit 0
     fi
 
 }
