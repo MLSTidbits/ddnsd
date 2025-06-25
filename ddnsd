@@ -272,8 +272,25 @@ _appLicense="GPL-3.0"
 
 _ddnsdConfig="/etc/ddnsd.conf"
 
+_editor="${EDITOR:-nano}"
+
 # shellcheck disable=SC1090
-source ${_ddnsdConfig} || { echo "Missing configuration ${_ddnsdConfig}!" ; exit 1 ; }
+source ${_ddnsdConfig} || { event_log "error" "Failed to source configuration file ${_ddnsdConfig}!" ; exit 1 ; }
+
+if test -f /etc/ddnsd.conf.d/cloudflare.conf ; then
+    source /etc/ddnsd.conf.d/cloudflare.conf 2>/dev/null
+else
+    cp -av /usr/share/${_appName}/example.conf /etc/ddnsd.conf.d/cloudflare.conf
+    $_editor /etc/ddnsd.conf.d/cloudflare.conf && restart_ddnsd
+fi
+
+if test -f /etc/ddnsd.conf.d/duckdns.conf ; then
+    source /etc/ddnsd.conf.d/duckdns.conf 2>/dev/null
+else
+    cp -av /usr/share/${_appName}/example.conf /etc/ddnsd.conf.d/duckdns.conf
+    $_editor /etc/ddnsd.conf.d/duckdns.conf && restart_ddnsd
+fi
+
 
 # Global settings
 _ddnsProvider="${DDNS_PROVIDER:-duck}"
@@ -291,8 +308,6 @@ _cloudflareMethod="${CLOUDFLARE_METHOD:-token}"
 _cloudflareZoneID="${CLOUDFLARE_ZONE_ID}"
 _cloudflareProxy="${CLOUDFLARE_PROXY:-true}"
 _cloudflareTTL="${CLOUDFLARE_TTL:-300}"
-
-_editor="${EDITOR:-nano}"
 
 _ddnsdIPFile="/tmp/ddnsd.ip"
 
@@ -344,8 +359,7 @@ Domain Name:            ${_domainName:-not set}
 IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
 Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null &&
-                            echo "reachable" || echo "unreachable")
+DDNS Status:            $(ping -c 1 "${_domainName}" 2> /dev/null && echo "reachable" || echo "unreachable")
 
 Configuration File:     ${_ddnsdConfig}
 EOF
