@@ -9,10 +9,12 @@ _ddnsd_complete () {
 
     # Main commands
     commands="start stop restart status config help version"
+
+    # Configuration options for the config command
     conf_opt="cloudflare duckdns -h --help"
 
     mapfile -t COMPREPLY < <(compgen -W "${commands}" -- "${cur}")
-    case "${prev}" in
+    case "${COMP_WORDS[1]}" in
         start|stop|restart|status|help|version)
             COMPREPLY=()
         ;;
@@ -20,8 +22,11 @@ _ddnsd_complete () {
             mapfile -t COMPREPLY < <(compgen -W "${conf_opt}" -- "${cur}")
         ;;
         *)
-            mapfile -t COMPREPLY < <(compgen -w "${commands}" -- "${cur}")
-            ;;
+            # Default to completing the main commands
+            if [[ "$COMP_CWORD" -eq 1 ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "${commands}" -- "$cur")
+            fi
+        ;;
     esac
 }
 
