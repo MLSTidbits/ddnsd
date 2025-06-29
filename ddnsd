@@ -186,12 +186,12 @@ function cloudflare_ddnsd () {
         --data "{
             \"type\": \"A\",
             \"name\": \"${_domainName}\",
-            \"content\": \"${_currentIP}\",
+            \"content\": \"$(cat ${_ddnsdIPFile})\",
             \"ttl\": ${_cloudflareTTL},
             \"proxied\": ${_cloudflareProxy}
         }" | jq -r '.success')"
 
-        test "${_recordUpdate}" = "true" || { echo "${_domainName} dns record update failed." ; exit 1 ; }
+        test "${_recordUpdate}" = "true" || { event_log "error" "${_domainName} dns record update failed." ; exit 1 ; }
 
     event_log "info" "Cloudflare DNS record updated successfully."
 
