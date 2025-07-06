@@ -1,14 +1,18 @@
-Package: ddnsd
-Version:
-Section: net
+Source: ddnsd
+Section: unknown
 Priority: optional
-Maintainer: Michael Schaecher <MichaelLeeSchaecher@gmail.com>
-Installed-Size:
+Maintainer: Michael <michaelleeschaecher@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.0
 Homepage: https://github.com/MichaelSchaecher/ddnsd
-Architecture: amd64
-Depends: jq, curl, coreutils, nano
-Conflicts: ddns
-Build-Depends: debhelper (>= 11), git, make (>= 4.1), dpkg-dev
+Vcs-Browser: https://github.com/MichaelSchaecher/ddnsd
+Vcs-Git: https://github.com/MichaelSchaecher/ddnsd
+Rules-Requires-Root: yes
+
+Package: ddnsd
+Architecture: any
+Depends: 
+ jq, curl, coreutils, nano, systemd,
 Description: ddnsd is a dynamic DNS server for Cloudflare and DuckDNS
   Using SystemD service to run ddnsd in the background. To monitor for
   changes in the IP address.
