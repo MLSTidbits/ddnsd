@@ -1,11 +1,11 @@
 ---
-title: DDNSD CONFIG
+title: DDNSD.CONFIG
 section: 8
-header: "Manual"
+header: Configuration
 author: Michael L. Schaecher <MichaelLeeSchaecher@gmail.com>
-footer: DDNSD CONFIG
+footer: DDNSD.CONFIG
 version: 0.8.6
-date: 2025-06-21
+date: 2025-07-05
 ---
 
 # NAME
