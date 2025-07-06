@@ -71,8 +71,24 @@ function start_ddnsd () {
 
     event_log "info" "Checking IP address ... $(check_ip)"
 
-    while true ; do
-        _currentIP="$(check_ip)" || { event_log "error" "IP lookup service ${_ipLookup} is not reachable!" ; exit 1 ;  }
+    while true ; do while true ; do
+
+        # Check if the IP lookup service is reachable and get the current IP address
+        # some times the IP lookup service is not reachable, assume the IP is has changed
+        # and continue the loop to retry ever 5 minutes.
+        
+        # If the IP lookup service is not reachable, after 15 minutes, exit with an error.
+        # This is to prevent the script from running indefinitely if the service is down.
+        _countLookUp=0
+        while ! _currentIP="$(check_ip)" ; do
+            (( _countLookUp++ ))
+            if (( _countLookUp >= 3 )) ; then
+                event_log "error" "IP lookup service ${_ipLookup} is not reachable after 3 attempts. Exiting."
+                exit 1
+            fi
+            event_log "warning" "IP lookup service ${_ipLookup} is not reachable. Retrying in 5 minutes..."
+            sleep 300
+        done
 
         _savedIP="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
@@ -210,12 +226,6 @@ function check_ip () {
             exit 1
         ;;
     esac
-
-    # Verify the IP lookup service is reachable
-    ping -c 1 "${_ip}" &> /dev/null || {
-        event_log "error" "IP lookup service ${_ip} is not reachable. Please check your network connection."
-        exit 1
-    }
 
     curl -s "https://${_ip}"
 }
