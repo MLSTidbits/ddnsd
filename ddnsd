@@ -57,7 +57,7 @@ function event_log () {
 
 }
 
-function start_ddnsd () {
+function monitor_ip_address () {
 
     root_check ; event_log "info" "Starting ddnsd service..."
 
@@ -71,12 +71,12 @@ function start_ddnsd () {
 
     event_log "info" "Checking IP address ... $(check_ip)"
 
-    while true ; do while true ; do
+    while true ; do
 
         # Check if the IP lookup service is reachable and get the current IP address
         # some times the IP lookup service is not reachable, assume the IP is has changed
         # and continue the loop to retry ever 5 minutes.
-        
+
         # If the IP lookup service is not reachable, after 15 minutes, exit with an error.
         # This is to prevent the script from running indefinitely if the service is down.
         _countLookUp=0
@@ -364,7 +364,7 @@ EOF
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                       ) start_ddnsd            ;;
+    start                       ) monitor_ip_address            ;;
     stop                        ) stop_ddnsd             ;;
     restart                     ) restart_ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
