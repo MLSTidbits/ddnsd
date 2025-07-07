@@ -1,0 +1,23 @@
+#!/bin/sh
+
+case "$1" in
+	remove|purge 							)
+		case "$(systemctl is-enabled ddnsd.service 2>/dev/null)" in
+			"enabled"  	  					)
+				systemctl stop ddnsd.service >/dev/null || true
+				systemctl disable --now ddnsd.service >/dev/null || true
+			;;
+			"disabled"|"static"|"dead"		)
+				systemctl disable --now ddnsd.service >/dev/null || true
+			;;
+			*)
+				echo "ddnsd.service is masked or in an unknown state, not stopping." >&2
+			;;
+		esac
+	;;
+	*										)
+		echo "postrm called with unknown argument: $1" >&2
+	;;
+esac
+
+exit 0

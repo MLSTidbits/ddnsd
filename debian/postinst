@@ -1,0 +1,27 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+	abort-upgrade|abort-deconfigure|abort-remove	) ;;
+	configure)
+		case "$(systemctl is-enabled ddnsd.service >/dev/null 2>&1)" in
+			"enabled"  	  					        )
+				systemctl daemon-reload >/dev/null || true
+				systemctl restart ddnsd.service >/dev/null || true
+			;;
+			"disabled"|"static"|"dead"				)
+				echo "ddnsd.service is disabled or static, not starting." >&2
+			;;
+			*										)
+				echo "Masked/Unknown state for ddnsd.service." >&2
+				exit 1
+			;;
+		esac
+	;;
+	*												)
+		echo "postinst called with unknown argument: $1" >&2
+		exit 1
+		;;
+esac
+
+exit 0
