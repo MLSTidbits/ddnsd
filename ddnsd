@@ -18,9 +18,7 @@
 
 # Check if the script is run as root
 function root_check () {
-
-    (( "$(id -u)" == 0 )) || { echo "This script must be run as root" ; exit 1 ; }
-
+    (( "$(id -u)" == 0 )) || echo "This script must be run as root"
 }
 
 # shellcheck disable=SC2317
@@ -234,7 +232,9 @@ function edit_ddnsd_conf () {
 
     echo "Opening configuration file for editing..."
 
-    root_check ; shift
+    # Check if the user is root or has permission to edit the configuration file.
+    # if check fails then rerun the script with sudo.
+    root_check || { echo "Executing as root" ; exec sudo "$@" ; }
 
     case "${1}" in
         cloudflare|duckdns      )
@@ -285,7 +285,7 @@ _ddnsdConfig="/etc/ddnsd.conf"
 _editor="${EDITOR:-nano}"
 
 # shellcheck disable=SC1090
-source ${_ddnsdConfig} || { event_log "error" "Failed to source configuration file ${_ddnsdConfig}!" ; exit 1 ; }
+source ${_ddnsdConfig} || edit_ddnsd_conf
 
 # Global settings
 _ddnsProvider="${DDNS_PROVIDER:-duck}"
