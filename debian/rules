@@ -26,8 +26,8 @@
 app_name = ddnsd
 
 # Source files
-app = $(CURDIR)/$(app_name)
-app_conf = $(CURDIR)/ddnsd.conf
+app = $(CURDIR)/src/$(app_name)
+app_conf = $(CURDIR)/src/conf/$(app_name).conf
 
 # Installation directories
 pkg_dir = $(CURDIR)/debian/$(app_name)
@@ -60,6 +60,8 @@ binary-indep: install
 	dh_installdocs
 	dh_bash-completion
 	dh_installchangelogs
+	dh_installsystemd
+	dh_lintian
 	dh_installman
 	dh_installmime
 	dh_link
