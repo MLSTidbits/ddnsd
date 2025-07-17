@@ -18,6 +18,8 @@ Most IP Addresses provided by ISPs are dynamic, meaning they can change over tim
 - **Configurable**: Easily configure providers settings
 - **Domain Management**: Add, delete, and list domains.
 - **IP Address Detection**: Automatically detects your public IP address.
+- If IP look up fails, then it will retry every 5 minutes 3 times before giving up.
+- **Systemd Service**: Runs as a systemd service for easy management.
 
 ### Requirements
 
