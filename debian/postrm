@@ -3,26 +3,19 @@
 set -e
 
 case "$1" in
-  remove)
-    if [ -d /run/systemd/system ]; then
-      systemctl --system daemon-reload >/dev/null || true
-    fi
+    remove|purge    )
+        [ -d /run/systemd/system ] && {
+        systemctl --system daemon-reload >/dev/null || true ; }
 
-    if [ -x "/usr/bin/deb-systemd-helper" ]; then
-      deb-systemd-helper mask 'btrfsnapd.service' 'btrfsnapd.timer' >/dev/null || true
-    fi
-    ;;
 
-  purge)
-    if [ -x "/usr/bin/deb-systemd-helper" ]; then
-      deb-systemd-helper purge 'btrfsnapd.service' 'btrfsnapd.timer' >/dev/null || true
-      deb-systemd-helper unmask 'btrfsnapd.service' 'btrfsnapd.timer' >/dev/null || true
-    fi
-    ;;
+        [ -x "/usr/bin/deb-systemd-helper" ] && {
+        deb-systemd-helper stop 'ddnsd.service' >/dev/null || true ; }
 
-  *)
-    echo "Unsupported option $1" >&2
-    exit 1
+        [ -x "/usr/bin/deb-systemd-helper" ] && {
+        deb-systemd-helper purge 'ddnsd.service' >/dev/null || true
+        deb-systemd-helper unmask 'ddnsd.service' >/dev/null || true ; }
     ;;
+    failed-upgrade  ) ;;
+    *               ) echo "Unsupported option $1" >&2 ; exit 1 ;;
 esac
 
