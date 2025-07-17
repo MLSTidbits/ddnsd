@@ -81,10 +81,10 @@ function monitor_ip_address () {
         while ! _currentIP="$(check_ip)" ; do
             (( _countLookUp++ ))
             if (( _countLookUp >= 3 )) ; then
-                event_log "error" "IP lookup service ${_ipLookup} is not reachable after 3 attempts. Exiting."
+                event_log "error" "Failed to IP lookup after 3 attempts. Exiting..."
                 exit 1
             fi
-            event_log "warning" "IP lookup service ${_ipLookup} is not reachable. Retrying in 5 minutes..."
+            event_log "warning" "IP lookup ${_ipLookup} is not reachable. Retrying in 5 minutes..."
             sleep 300
         done
 
@@ -105,6 +105,8 @@ function monitor_ip_address () {
 
             event_log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
         fi
+
+        event_log "info" "No IP change detected. Current IP: ${_currentIP}."
 
         sleep 5 ; continue
     done
@@ -129,7 +131,7 @@ function duck_ddnsd () {
 
     if test "${_duckDNSInsecure}" = "true" ; then
         serviceType="-kK"
-        event_log "warning" "Using insecure connection for DuckDNS updates. This is not recommended."
+        event_log "warning" "Using nsecure connection for DuckDNS updates."
     else
         serviceType="-k"
     fi
@@ -364,7 +366,7 @@ EOF
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                       ) monitor_ip_address            ;;
+    start                       ) monitor_ip_address     ;;
     stop                        ) stop_ddnsd             ;;
     restart                     ) restart_ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
