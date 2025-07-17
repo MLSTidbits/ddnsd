@@ -1,27 +1,35 @@
 #!/bin/sh
+
 set -e
 
 case "$1" in
-	abort-upgrade|abort-deconfigure|abort-remove	) ;;
-	configure)
-		case "$(systemctl is-enabled ddnsd.service >/dev/null 2>&1)" in
-			"enabled"  	  					        )
-				systemctl daemon-reload >/dev/null || true
-				systemctl restart ddnsd.service >/dev/null || true
-			;;
-			"disabled"|"static"|"dead"				)
-				echo "ddnsd.service is disabled or static, not starting." >&2
-			;;
-			*										)
-				echo "Masked/Unknown state for ddnsd.service." >&2
-				exit 1
-			;;
-		esac
-	;;
-	*												)
-		echo "postinst called with unknown argument: $1" >&2
-		exit 1
-		;;
-esac
+  configure|abort-upgrade|abort-deconfigure|abort-remove)
+    # Handle btrfsnapd.service
+    deb-systemd-helper unmask 'btrfsnapd.service' >/dev/null || true
+    if deb-systemd-helper --quiet was-enabled 'btrfsnapd.service'; then
+      deb-systemd-helper enable 'btrfsnapd.service' >/dev/null || true
+    else
+      deb-systemd-helper update-state 'btrfsnapd.service' >/dev/null || true
+    fi
 
-exit 0
+    # Handle btrfsnapd.timer
+    deb-systemd-helper unmask 'btrfsnapd.timer' >/dev/null || true
+    if deb-systemd-helper --quiet was-enabled 'btrfsnapd.timer'; then
+      deb-systemd-helper enable 'btrfsnapd.timer' >/dev/null || true
+    else
+      deb-systemd-helper update-state 'btrfsnapd.timer' >/dev/null || true
+    fi
+
+    # Reload systemd and start or restart services
+    if [ -d /run/systemd/system ]; then
+      systemctl --system daemon-reload >/dev/null || true
+      if [ -n "$2" ]; then
+        _dh_action=restart
+      else
+        _dh_action=start
+      fi
+      deb-systemd-invoke $_dh_action 'btrfsnapd.service' 'btrfsnapd.timer' >/dev/null || true
+    fi
+    ;;
+    *) echo "Unsupported option $1" ; exit 1
+esac
