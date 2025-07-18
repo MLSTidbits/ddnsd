@@ -106,8 +106,6 @@ function monitor_ip_address () {
             event_log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
         fi
 
-        event_log "info" "No IP change detected. Current IP: ${_currentIP}."
-
         sleep 5 ; continue
     done
 }
