@@ -3,7 +3,7 @@
 set -e
 
 case "$1" in
-    configure                                    )
+    configure|upgrade                            )
         deb-systemd-helper unmask 'ddnsd.service' >/dev/null || true
         if deb-systemd-helper --quiet was-enabled 'ddnsd.service'; then
             deb-systemd-helper enable 'ddnsd.service' >/dev/null || true
