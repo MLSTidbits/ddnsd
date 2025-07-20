@@ -1,11 +1,11 @@
 ---
 title: "DDNSDD"
-section: 8
-header: "Manual"
+section: "1"
+header: User Commands
 author: Michael L. Schaecher <MichaelLeeSchaecher@gmail.com>
 footer: DDNSDD
 version: 0.8.6
-date: 2025-06-21
+date: 2025-07-20
 ---
 
 # NAME
@@ -56,7 +56,7 @@ _h_ or _--help_
 
 # SEE ALSO
 
-_ddnsd-config_(8)
+_ddnsd.conf(5)_, _systemd(1)_
 
 # COPYRIGHT
 
