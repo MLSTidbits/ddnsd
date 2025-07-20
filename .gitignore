@@ -19,5 +19,5 @@ debian/*.substvars
 debian/ddnsd/
 
 doc/version
-man/ddnsd.8
+man/ddnsd.1
 man/ddnsd.conf.5
