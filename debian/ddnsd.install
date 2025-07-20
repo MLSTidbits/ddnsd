@@ -1,0 +1,2 @@
+src/ddnsd usr/bin/
+src/conf/ddnsd.conf etc/
