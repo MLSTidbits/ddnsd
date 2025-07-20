@@ -71,6 +71,9 @@ function monitor_ip_address () {
 
     while true ; do
 
+        # Check if the IP lookup service is set
+        _currentIP="$(check_ip)"
+
         # Check if the IP lookup service is reachable and get the current IP address
         # some times the IP lookup service is not reachable, assume the IP is has changed
         # and continue the loop to retry ever 5 minutes.
@@ -78,7 +81,7 @@ function monitor_ip_address () {
         # If the IP lookup service is not reachable, after 15 minutes, exit with an error.
         # This is to prevent the script from running indefinitely if the service is down.
         _countLookUp=0
-        while ! _currentIP="$(check_ip)" ; do
+        while [ -z "${_currentIP}" ] ; do
             (( _countLookUp++ ))
             if (( _countLookUp >= 3 )) ; then
                 event_log "error" "Failed to IP lookup after 3 attempts. Exiting..."
