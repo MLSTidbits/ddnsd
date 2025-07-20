@@ -1,21 +1,23 @@
 Source: ddnsd
-Section: unknown
+Section: net
 Priority: optional
 Maintainer: Michael <michaelleeschaecher@gmail.com>
-Build-Depends: debhelper-compat (= 10)
+Build-Depends:
+ debhelper-compat (= 13), pandoc
 Standards-Version: 4.6.0
 Homepage: https://github.com/MichaelSchaecher/ddnsd
 Vcs-Browser: https://github.com/MichaelSchaecher/ddnsd
-Vcs-Git: https://github.com/MichaelSchaecher/ddnsd
+Vcs-Git: https://github.com/MichaelSchaecher/ddnsd.git
 Rules-Requires-Root: no
 
 Package: ddnsd
 Architecture: any
 Depends:
- jq, curl, coreutils, nano, systemd,
-Description: ddnsd is a dynamic DNS server for Cloudflare and DuckDNS
-  Using SystemD service to run ddnsd in the background. To monitor for
-  changes in the IP address.
-  .
-  It will update the DNS records on Cloudflare and DuckDNS when the IP
-  address changes.
+ jq, curl, coreutils (>= 8), nano, systemd,
+Description: Dynamic DNS client for updating DNS records
+ ddnsd is a dynamic DNS client that updates DNS records based on the current
+ public IP address of the system. It supports multiple DNS providers and can
+ be configured to run as a systemd service.
+ .
+ It uses an external IP lookup service to determine the current public IP
+ address and updates the DNS records accordingly.

@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 # ddnsd - A simple dynamic DNS client script
 # Copyright (C) 2025 Michael Schaecher <MichaelLeeSchaecher@gmail.com>
