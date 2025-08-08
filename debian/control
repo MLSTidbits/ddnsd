@@ -1,9 +1,9 @@
 Source: ddnsd
 Section: net
 Priority: optional
-Maintainer: Michael <michaelleeschaecher@gmail.com>
+Maintainer: MLS Tidbits <contact@mlstidbits.com>
 Build-Depends:
- debhelper-compat (= 13), pandoc
+ debhelper-compat (= 13), pandoc, dh-make, git, dh-gitchangelog
 Standards-Version: 4.6.0
 Homepage: https://github.com/MichaelSchaecher/ddnsd
 Vcs-Browser: https://github.com/MichaelSchaecher/ddnsd
