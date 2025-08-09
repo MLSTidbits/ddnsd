@@ -5,9 +5,9 @@ Maintainer: MLS Tidbits <contact@mlstidbits.com>
 Build-Depends:
  debhelper-compat (= 13), pandoc, dh-make, git, dh-gitchangelog
 Standards-Version: 4.6.0
-Homepage: https://github.com/MichaelSchaecher/ddnsd
-Vcs-Browser: https://github.com/MichaelSchaecher/ddnsd
-Vcs-Git: https://github.com/MichaelSchaecher/ddnsd.git
+Homepage: https://mlstidbits.com
+Vcs-Browser: https://github.com/MLSTidbits/ddnsd
+Vcs-Git: https://github.com/MLSTidbits/ddnsd.git
 Rules-Requires-Root: no
 
 Package: ddnsd
