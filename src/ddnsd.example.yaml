@@ -1,0 +1,58 @@
+format: ddnsd
+
+# Select which service to use for IP lookup (see below for options)
+# Options: ifconfig, icanhazip, ipinfo
+ip_lookup: icanhazip
+
+# The two most common services for dynamic DNS updates for homelab users
+# are Cloudflare and DuckDNS. Although Cloudflare is more flexible and
+# powerful, DuckDNS is simpler to set up and use for basic needs.
+service: duckdns
+
+# Inorder for ddns to work, you must have a domain name registered with
+# the service you choose. For DuckDNS, this is a subdomain of duckdns.org
+# making your full domain name <subdomain>.duckdns.org.
+#
+# For Cloudflare, you must have a domain name registered with any domain
+# registrar and then use Cloudflare's nameservers for that domain.
+domain: your-subdomain
+
+# This is the API token for your Cloudflare or DuckDNS account. For Cloudflare, you can
+# create a token with the necessary permissions in your Cloudflare dashboard. For DuckDNS,
+# you can find your token on the DuckDNS website after logging in.
+#
+# Example: 1234567890abcdef1234567890abcdef
+token: your-api-token
+
+Cloudflare:
+  # The email address associated with your Cloudflare account.
+  email: myemail@email.com
+  # The method to use for Cloudflare updates. Options are:
+  # token - Use API token for authentication
+  # global - Use Global API key and email for authentication
+  method: token
+  # The Cloudflare zone ID for your domain. This can be found in the Cloudflare dashboard
+  # under the DNS settings for your domain.
+  zone_id: your-zone-id
+  # Enable/disable proxying through Cloudflare. NOTE: if you are using this with a local
+  # vpn service like Tailscale, OpenVPN or WireGuard you must set this to false.
+  # true - Proxy enabled (orange cloud)
+  # false - Proxy disabled (grey cloud)
+  proxied: false
+  # The TTL (time to live) for the DNS record in seconds. This is how long
+  # DNS resolvers should cache the record before checking for updates.
+  # Options are: 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400
+  ttl: 300
+
+DuckDNS:
+  # This setting allows you to enable insecure connections to the DuckDNS API using HTTP instead
+  # of HTTPS. This generally not recommended due to security concerns, but it can be useful in
+  # certain situations.
+  #
+  # Default: false.
+  insecure: false
+  # Should the output from DuckDNS be more verbose? This setting controls whether
+  # This helps you see more detailed information about the updates being made.
+  #
+  # Default: false.
+  verbose: true

@@ -32,10 +32,10 @@ function event_log () {
 
     case "${_eventType}" in
         info|warning|error|critical )
-            logger -t "${_appName}" -p user.${_eventType} "${_eventMessage}"
+            logger -t "${_name}" -p user.${_eventType} "${_eventMessage}"
         ;;
         *                           )
-            logger -t "${_appName}" -p user.unknown "${_eventMessage}"
+            logger -t "${_name}" -p user.unknown "${_eventMessage}"
         ;;
     esac
 
@@ -230,7 +230,7 @@ function edit_ddnsd_conf () {
             if test -f /etc/"${1}".conf.d/$1.conf ; then
                 event_log "info" "Configuration file for ${1} already exists. Opening for editing..."
             else
-                cp -av /usr/share/${_appName}/example.conf /etc/"${1}".conf
+                cp -av /usr/share/${_name}/example.conf /etc/"${1}".conf
             fi
         ;;
         --help|-h               ) echo "${_configInfo}" ; exit 0 ;;
@@ -265,33 +265,26 @@ function restart_ddnsd () {
 
 set -eo pipefail
 
-_appName="ddnsd"
-_appVersion="$(cat /usr/share/doc/${_appName}/version 2>/dev/null || echo "unknown")"
-_appLicense="GPL-3.0"
-
-_ddnsdConfig="/etc/ddnsd.conf"
+_name="ddnsd"
+_version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 
 _editor="${EDITOR:-nano}"
 
-# shellcheck disable=SC1090
-source ${_ddnsdConfig} || edit_ddnsd_conf
+_config="$USER/.config/${_name}/config.yaml"
 
-# Global settings
-_ddnsProvider="${DDNS_PROVIDER:-duck}"
-_domainName="${DOMAIN_NAME}"
-_apiToken="${API_TOKEN}"
-_ipLookup="${IP_LOOKUP:-icanhazip}"
+if [[ ! -f $_config ]] ; then
+    echo "Configuration file not found: ${_config}"
+    sleep 2
+    cp -av /usr/share/${_name}/ddnsd.exmple.yaml "$_config" || {
+        echo "Failed to copy example configuration to ${_config}" ; exit 1 ;
+    }
+    echo "Example configuration copied to ${_config}. Please edit the file and set the required values."
+    sleep 2
+    "${_editor}" "$_config" || {
+        echo "Failed to open configuration file in ${_editor}." ; exit 1 ;
+    }
+fi
 
-# DuckDNS settings
-_duckDNSInsecure="${DUCKDNS_INSECURE:-false}"
-_duckDNSVerbose="${DUCKDNS_VERBOSE:-false}"
-
-# Cloudflare settings
-_cloudflareEmail="${CLOUDFLARE_EMAIL}"
-_cloudflareMethod="${CLOUDFLARE_METHOD:-token}"
-_cloudflareZoneID="${CLOUDFLARE_ZONE_ID}"
-_cloudflareProxy="${CLOUDFLARE_PROXY:-true}"
-_cloudflareTTL="${CLOUDFLARE_TTL:-300}"
 
 _ddnsdIPFile="/tmp/ddnsd.ip"
 
@@ -299,14 +292,14 @@ _ddnsdIPFile="/tmp/ddnsd.ip"
 trap sign_handler SIGINT SIGTERM SIGQUIT
 
 _versionInfo="$(cat <<EOF
-${_appName} - [ Version: ${_appVersion} ] - License: ${_appLicense}"
+${_name} - [ Version: ${_version} ] - License: ${_appLicense}"
 EOF
 )"
 
 _helpInfo="$(cat <<EOF
 ${_versionInfo}
 
-Usage: ${_appName} [start|stop|restart|status|config|help|version]
+Usage: ${_name} [start|stop|restart|status|config|help|version]
 
 Options:
     start           Start monitoring for IP changes and update DDNS
@@ -317,21 +310,21 @@ Options:
     help            Show this help message
     version         Show version information
 
-Version: ${_appVersion}
+Version: ${_version}
 EOF
 )"
 
 _configInfo="$(cat <<EOF
 ${_versionInfo}
 
-Usage: ${_appName} config [cloudflare|duckdns|--help|-h]
+Usage: ${_name} config [cloudflare|duckdns|--help|-h]
 
 Options:
-    cloudflare      Copy the example Cloudflare configuration to /etc/${_appName}.conf
-    duckdns         Copy the example DuckDNS configuration to /etc/${_appName}.conf
+    cloudflare      Copy the example Cloudflare configuration to /etc/${_name}.conf
+    duckdns         Copy the example DuckDNS configuration to /etc/${_name}.conf
     --help|-h       Show this help message
 
-Version: ${_appVersion}
+Version: ${_version}
 EOF
 )"
 
@@ -362,7 +355,7 @@ case "${1}" in
     version                     ) echo "${_versionInfo}" ;;
     *                           )
         echo "Invalid option: ${1}"
-        echo "Use '${_appName} help' for usage information."
+        echo "Use '${_name} help' for usage information."
         exit 1
 esac
 
