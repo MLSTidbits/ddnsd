@@ -42,7 +42,7 @@ function event-log () {
 
 }
 
-function monitor_ip_address () {
+function monitor-ip-address () {
 
     root_check ; event-log "info" "Starting ddnsd service..."
 
@@ -54,45 +54,30 @@ function monitor_ip_address () {
 
     while true ; do
 
+        event-log "info" "Checking IP address using $_lookup service"
+
         # Check if the IP lookup service is set
-        _currentIP="$(check_ip)"
+        _current="$(check-ip)"
 
-        # Check if the IP lookup service is reachable and get the current IP address
-        # some times the IP lookup service is not reachable, assume the IP is has changed
-        # and continue the loop to retry ever 5 minutes.
+        _saved="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
-        # If the IP lookup service is not reachable, after 15 minutes, exit with an error.
-        # This is to prevent the script from running indefinitely if the service is down.
-        _countLookUp=0
-        while [ -z "${_currentIP}" ] ; do
-            (( _countLookUp++ ))
-            if (( _countLookUp >= 3 )) ; then
-                event-log "error" "Failed to IP lookup after 3 attempts. Exiting..."
-                exit 1
-            fi
-            event-log "warning" "IP lookup ${_ipLookup} is not reachable. Retrying in 5 minutes..."
-            sleep 300
-        done
+        if test "${_saved}" != "${_current}" ; then
+            event-log "info" "IP address changed: ${_saved} -> ${_current}"
+            echo "${_current}" > /tmp/ddnsd.ip
 
-        _savedIP="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
-
-        if test "${_savedIP}" != "${_currentIP}" ; then
-            event-log "info" "IP address changed: ${_savedIP} -> ${_currentIP}"
-            echo "${_currentIP}" > /tmp/ddnsd.ip
-
-            case "${_ddnsProvider}" in
+            case "${_provider}" in
                 duck            ) duck_ddnsd       ;;
                 cloudflare      ) cloudflare_ddnsd ;;
                 *               )
-                    echo "Unsupported DDNS provider: ${_ddnsProvider}"
+                    echo "Unsupported DDNS provider: ${_provider}"
                     exit 1
                 ;;
             esac
 
-            event-log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
+            event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
         fi
 
-        sleep 5 ; continue
+        sleep 5m ; continue
     done
 }
 
@@ -106,11 +91,11 @@ function stop_ddnsd () {
 
 function duck_ddnsd () {
 
-    event-log "info" "Configuring DuckDNS for domain ${_domainName}..."
+    event-log "info" "Configuring DuckDNS for domain ${_domain}..."
 
     local _duckDNSUrl _serviceType _verboseFlag
 
-    _duckDNSUrl="https://www.duckdns.org/update?domains=${_domainName}&token=${_apiToken}&ip="
+    _duckDNSUrl="https://www.duckdns.org/update?domains=${_domain}&token=${_apiToken}&ip="
     _verboseFlag="verbose=${_duckDNSVerbose}"
 
     if test "${_duckDNSInsecure}" = "true" ; then
@@ -123,14 +108,14 @@ function duck_ddnsd () {
     # Verify if the domain name is set
     case "$(echo "url=${_duckDNSUrl}&${_verboseFlag}" | curl ${serviceType})" in
         *"OK"*              )
-            event-log "info" "DuckDNS update successful for domain ${_domainName}."
+            event-log "info" "DuckDNS update successful for domain ${_domain}."
         ;;
         *"KO"*              )
-            event-log "error" "DuckDNS update failed for domain ${_domainName}."
+            event-log "error" "DuckDNS update failed for domain ${_domain}."
             exit 1
         ;;
         *                   )
-            event-log "error" "Unexpected response from DuckDNS for domain ${_domainName}."
+            event-log "error" "Unexpected response from DuckDNS for domain ${_domain}."
             exit 1
         ;;
     esac
@@ -139,7 +124,7 @@ function duck_ddnsd () {
 
 function cloudflare_ddnsd () {
 
-    event-log "info" "Configuring Cloudflare for domain ${_domainName}..."
+    event-log "info" "Configuring Cloudflare for domain ${_domain}..."
 
     # Verify that the Cloudflare email set and is in the correct format
     [[ "${_cloudflareEmail}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || {
@@ -149,7 +134,7 @@ function cloudflare_ddnsd () {
     # Verify that the Cloudflare Zone ID is set
     test -n "${_cloudflareZoneID}" || { echo "Please set CLOUDFLARE_ZONE_ID in the configuration." ; exit 1 ; }
 
-    local _serviceType _verboseFlag _currentIP _keyUrl _authHeader _cloudflareURL
+    local _serviceType _verboseFlag _current _keyUrl _authHeader _cloudflareURL
 
     _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
     _cloudflareURL="https://api.cloudflare.com/client/v4/zones"
@@ -172,12 +157,12 @@ function cloudflare_ddnsd () {
 
     event-log "info" "Verified Cloudflare API token = ${verifyKey}"
 
-    _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domainName}}" \
+    _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domain}}" \
         --header "X-Auth-Email: ${_cloudflareEmail}" \
         --header "${_authHeader} ${_apiToken}" \
         --header "Content-Type: application/json" | jq -r '.result[].id')
 
-    test -n "${_recordID}" || { echo "No DNS record found for domain ${_domainName}." ; exit 1 ; }
+    test -n "${_recordID}" || { echo "No DNS record found for domain ${_domain}." ; exit 1 ; }
 
      _recordUpdate="$(curl -s -X PATCH "${_cloudflareURL}/${_cloudflareZoneID}/dns_records/${_recordID}" \
         --header "X-Auth-Email: ${_cloudflareEmail}" \
@@ -185,19 +170,19 @@ function cloudflare_ddnsd () {
         --header "Content-Type: application/json" \
         --data "{
             \"type\": \"A\",
-            \"name\": \"${_domainName}\",
+            \"name\": \"${_domain}\",
             \"content\": \"$(cat ${_ddnsdIPFile})\",
             \"ttl\": ${_cloudflareTTL},
             \"proxied\": ${_cloudflareProxy}
         }" | jq -r '.success')"
 
-        test "${_recordUpdate}" = "true" || { event-log "error" "${_domainName} dns record update failed." ; exit 1 ; }
+        test "${_recordUpdate}" = "true" || { event-log "error" "${_domain} dns record update failed." ; exit 1 ; }
 
     event-log "info" "Cloudflare DNS record updated successfully."
 
 }
 
-function check_ip () {
+function check-ip () {
 
     local _ip
 
@@ -335,12 +320,12 @@ EOF
 _statusInfo="$(cat <<EOF
 ${_versionInfo}
 
-DDNS Provider:          ${_ddnsProvider:-not set}
-Domain Name:            ${_domainName:-not set}
+DDNS Provider:          ${_provider:-not set}
+Domain Name:            ${_domain:-not set}
 IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
 Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "${_domainName}" &> /dev/null && echo "reachable" || echo "unreachable")
+DDNS Status:            $(ping -c 1 "${_domain}" &> /dev/null && echo "reachable" || echo "unreachable")
 
 Configuration File:     ${_ddnsdConfig}
 EOF
@@ -350,7 +335,7 @@ EOF
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                       ) monitor_ip_address     ;;
+    start                       ) monitor-ip-address     ;;
     stop                        ) stop_ddnsd             ;;
     restart                     ) restart_ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
