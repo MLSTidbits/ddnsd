@@ -33,6 +33,7 @@ function event_log () {
     case "${_eventType}" in
         info|warning|error|critical )
             logger -t "${_name}" -p user.${_eventType} "${_eventMessage}"
+            [[ "${_eventType}" == "error" ]] && exit 1
         ;;
         *                           )
             logger -t "${_name}" -p user.unknown "${_eventMessage}"
@@ -268,6 +269,7 @@ set -eo pipefail
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 
+_ddnsdIPFile="/tmp/ddnsd.ip"
 _editor="${EDITOR:-nano}"
 
 _config="$USER/.config/${_name}/config.yaml"
@@ -285,14 +287,34 @@ if [[ ! -f $_config ]] ; then
     }
 fi
 
+[[ "$(yq -r '.format' "$_config")" == "ddnsd" ]] ||
+event_log "error" "Invalid configuration file format!"
 
-_ddnsdIPFile="/tmp/ddnsd.ip"
+### Global Configuration Variables ###
+
+_lookup="$(yq -r '.ip_lookup' "$_config" 2> /dev/null)"
+_provider="$(yq -r '.provider' "$_config" 2> /dev/null)"
+_domain="$(yq -r '.domain' "$_config" 2> /dev/null)"
+_token="$(yq -r '.token' "$_config" 2> /dev/null)"
+
+### Cloudflare Specific Configuration Variables ###
+
+_email="$(yq -r '.cloudflare.email' "$_config" 2> /dev/null)"
+_method="$(yq -r '.cloudflare.method' "$_config" 2> /dev/null)"
+_zone="$(yq -r '.cloudflare.zone' "$_config" 2> /dev/null)"
+_proxy="$(yq -r '.cloudflare.proxy' "$_config" 2> /dev/null)"
+_ttl="$(yq -r '.cloudflare.ttl' "$_config" 2> /dev/null)"
+
+### DuckDNS Specific Configuration Variables ###
+
+_insecure="$(yq -r '.duckdns.insecure' "$_config" 2> /dev/null)"
+_verbose="$(yq -r '.duckdns.verbose' "$_config" 2> /dev/null)"
 
 # Trap errors and log them
 trap sign_handler SIGINT SIGTERM SIGQUIT
 
 _versionInfo="$(cat <<EOF
-${_name} - [ Version: ${_version} ] - License: ${_appLicense}"
+${_name} - [ Version: ${_version} ] - License: GPLv3.0"
 EOF
 )"
 
@@ -309,20 +331,6 @@ Options:
     config          Show the current configuration (use 'config <provider>' to edit)
     help            Show this help message
     version         Show version information
-
-Version: ${_version}
-EOF
-)"
-
-_configInfo="$(cat <<EOF
-${_versionInfo}
-
-Usage: ${_name} config [cloudflare|duckdns|--help|-h]
-
-Options:
-    cloudflare      Copy the example Cloudflare configuration to /etc/${_name}.conf
-    duckdns         Copy the example DuckDNS configuration to /etc/${_name}.conf
-    --help|-h       Show this help message
 
 Version: ${_version}
 EOF
