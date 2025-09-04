@@ -3,7 +3,7 @@
 # Copyright (C) 2025 Michael Schaecher <MichaelLeeSchaecher@gmail.com>
 
 # Check if the script is run as root
-function root_check () {
+function root-check () {
     (( "$(id -u)" == 0 )) || echo "This script must be run as root"
 }
 
@@ -44,7 +44,7 @@ function event-log () {
 
 function monitor-ip-address () {
 
-    root_check ; event-log "info" "Starting ddnsd service..."
+    root-check ; event-log "info" "Starting ddnsd service..."
 
     [[ "$_domain" == "" || "$_domain" == "Null" ]] &&
     event-log "error" "Domain Name is required, see $USER/.config/ddnsd/config.yaml"
@@ -81,12 +81,20 @@ function monitor-ip-address () {
     done
 }
 
-function stop_ddnsd () {
+function stop-ddnsd () {
 
-    root_check ; event-log "info" "Stopping ddnsd service..."
+    root-check
+    echo "Stopping ddnsd service..."
+
+    systemctl stop ddnsd.service || event-log "warning" "ddnsd service is not running."
 
     # Stop the ddnsd service and all instances of ddnsd
-    pkill -f ddnsd || { echo "No ddnsd process found to stop." ; exit 0 ; }
+    pkill -f ddnsd || echo "No ddnsd process found to stop."
+    rm -f ${_ddnsdIPFile} ||
+    event-log "error" "Failed to remove IP address file ${_ddnsdIPFile}."
+
+    event-log "info" "ddnsd service stopped."
+
 }
 
 function duck_ddnsd () {
@@ -205,7 +213,7 @@ function edit_ddnsd_conf () {
 
     # Check if the user is root or has permission to edit the configuration file.
     # if check fails then rerun the script with sudo.
-    root_check || { echo "Executing as root" ; exec sudo "$@" ; }
+    root-check || { echo "Executing as root" ; exec sudo "$@" ; }
 
     case "${1}" in
         cloudflare|duckdns      )
@@ -237,7 +245,7 @@ function edit_ddnsd_conf () {
 
 function restart_ddnsd () {
 
-    root_check ; event-log "info" "Restarting ddnsd service..."
+    root-check ; event-log "info" "Restarting ddnsd service..."
 
     # Remove the IP address file if it exists before restarting
     rm -f ${_ddnsdIPFile} || event-log "warning" "Failed to remove IP address file ${_ddnsdIPFile}. Continuing..."
@@ -336,7 +344,7 @@ EOF
 # shellcheck disable=SC2154
 case "${1}" in
     start                       ) monitor-ip-address     ;;
-    stop                        ) stop_ddnsd             ;;
+    stop                        ) stop-ddnsd             ;;
     restart                     ) restart_ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
     config                      ) edit_ddnsd_conf "$@"   ;;
