@@ -41,7 +41,7 @@ Cloudflare:
   proxied: false
   # The TTL (time to live) for the DNS record in seconds. This is how long
   # DNS resolvers should cache the record before checking for updates.
-  # Options are: 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400
+  # Options: 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400
   ttl: 300
 
 DuckDNS:
