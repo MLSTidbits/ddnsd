@@ -14,10 +14,10 @@ function sign_handler () {
 
     case "${_signal}" in
         SIGINT|SIGTERM|SIGQUIT  )
-            event_log "info" "Received signal: ${_signal}. Stopping ddnsd service..."
+            event-log "info" "Received signal: ${_signal}. Stopping ddnsd service..."
         ;;
         *                       )
-            event_log "warning" "Received unknown signal: ${_signal}"
+            event-log "warning" "Received unknown signal: ${_signal}"
         ;;
     esac
 
@@ -25,7 +25,7 @@ function sign_handler () {
 
 }
 
-function event_log () {
+function event-log () {
 
     local _eventType="${1:-info}"
     local _eventMessage="${2:-No message provided}"
@@ -44,17 +44,13 @@ function event_log () {
 
 function monitor_ip_address () {
 
-    root_check ; event_log "info" "Starting ddnsd service..."
+    root_check ; event-log "info" "Starting ddnsd service..."
 
-    test -n "${_domainName}" || {
-        echo "Domain name is not set. Please set DOMAIN_NAME in the configuration." ; exit 1 ;
-    }
+    [[ "$_domain" == "" || "$_domain" == "Null" ]] &&
+    event-log "error" "Domain Name is required, see $USER/.config/ddnsd/config.yaml"
 
-    test -n "${_apiToken}" || {
-        echo "API token is not set. Please set API_TOKEN in the configuration." ; exit 1 ;
-    }
-
-    event_log "info" "Checking IP address ... $(check_ip)"
+    [[ "$_token" == "" || "$_token" == "Null" ]] &&
+    event-log "error" "Missing API Token for Cloudflare!"
 
     while true ; do
 
@@ -71,17 +67,17 @@ function monitor_ip_address () {
         while [ -z "${_currentIP}" ] ; do
             (( _countLookUp++ ))
             if (( _countLookUp >= 3 )) ; then
-                event_log "error" "Failed to IP lookup after 3 attempts. Exiting..."
+                event-log "error" "Failed to IP lookup after 3 attempts. Exiting..."
                 exit 1
             fi
-            event_log "warning" "IP lookup ${_ipLookup} is not reachable. Retrying in 5 minutes..."
+            event-log "warning" "IP lookup ${_ipLookup} is not reachable. Retrying in 5 minutes..."
             sleep 300
         done
 
         _savedIP="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
         if test "${_savedIP}" != "${_currentIP}" ; then
-            event_log "info" "IP address changed: ${_savedIP} -> ${_currentIP}"
+            event-log "info" "IP address changed: ${_savedIP} -> ${_currentIP}"
             echo "${_currentIP}" > /tmp/ddnsd.ip
 
             case "${_ddnsProvider}" in
@@ -93,7 +89,7 @@ function monitor_ip_address () {
                 ;;
             esac
 
-            event_log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
+            event-log "info" "DDNS update completed for ${_domainName} with IP ${_currentIP}"
         fi
 
         sleep 5 ; continue
@@ -102,7 +98,7 @@ function monitor_ip_address () {
 
 function stop_ddnsd () {
 
-    root_check ; event_log "info" "Stopping ddnsd service..."
+    root_check ; event-log "info" "Stopping ddnsd service..."
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || { echo "No ddnsd process found to stop." ; exit 0 ; }
@@ -110,7 +106,7 @@ function stop_ddnsd () {
 
 function duck_ddnsd () {
 
-    event_log "info" "Configuring DuckDNS for domain ${_domainName}..."
+    event-log "info" "Configuring DuckDNS for domain ${_domainName}..."
 
     local _duckDNSUrl _serviceType _verboseFlag
 
@@ -119,7 +115,7 @@ function duck_ddnsd () {
 
     if test "${_duckDNSInsecure}" = "true" ; then
         serviceType="-kK"
-        event_log "warning" "Using nsecure connection for DuckDNS updates."
+        event-log "warning" "Using nsecure connection for DuckDNS updates."
     else
         serviceType="-k"
     fi
@@ -127,14 +123,14 @@ function duck_ddnsd () {
     # Verify if the domain name is set
     case "$(echo "url=${_duckDNSUrl}&${_verboseFlag}" | curl ${serviceType})" in
         *"OK"*              )
-            event_log "info" "DuckDNS update successful for domain ${_domainName}."
+            event-log "info" "DuckDNS update successful for domain ${_domainName}."
         ;;
         *"KO"*              )
-            event_log "error" "DuckDNS update failed for domain ${_domainName}."
+            event-log "error" "DuckDNS update failed for domain ${_domainName}."
             exit 1
         ;;
         *                   )
-            event_log "error" "Unexpected response from DuckDNS for domain ${_domainName}."
+            event-log "error" "Unexpected response from DuckDNS for domain ${_domainName}."
             exit 1
         ;;
     esac
@@ -143,7 +139,7 @@ function duck_ddnsd () {
 
 function cloudflare_ddnsd () {
 
-    event_log "info" "Configuring Cloudflare for domain ${_domainName}..."
+    event-log "info" "Configuring Cloudflare for domain ${_domainName}..."
 
     # Verify that the Cloudflare email set and is in the correct format
     [[ "${_cloudflareEmail}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || {
@@ -174,7 +170,7 @@ function cloudflare_ddnsd () {
 
     test "${verifyKey}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
 
-    event_log "info" "Verified Cloudflare API token = ${verifyKey}"
+    event-log "info" "Verified Cloudflare API token = ${verifyKey}"
 
     _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domainName}}" \
         --header "X-Auth-Email: ${_cloudflareEmail}" \
@@ -195,9 +191,9 @@ function cloudflare_ddnsd () {
             \"proxied\": ${_cloudflareProxy}
         }" | jq -r '.success')"
 
-        test "${_recordUpdate}" = "true" || { event_log "error" "${_domainName} dns record update failed." ; exit 1 ; }
+        test "${_recordUpdate}" = "true" || { event-log "error" "${_domainName} dns record update failed." ; exit 1 ; }
 
-    event_log "info" "Cloudflare DNS record updated successfully."
+    event-log "info" "Cloudflare DNS record updated successfully."
 
 }
 
@@ -210,7 +206,7 @@ function check_ip () {
         "ipinfo"                ) _ip="${_ipLookup}.io/ip" ;;
         "ifconfig"              ) _ip="${_ipLookup}.co"    ;;
         *                       )
-            event_log "error" "Unsupported IP lookup service: ${_ipLookup}"
+            event-log "error" "Unsupported IP lookup service: ${_ipLookup}"
             exit 1
         ;;
     esac
@@ -229,7 +225,7 @@ function edit_ddnsd_conf () {
     case "${1}" in
         cloudflare|duckdns      )
             if test -f /etc/"${1}".conf.d/$1.conf ; then
-                event_log "info" "Configuration file for ${1} already exists. Opening for editing..."
+                event-log "info" "Configuration file for ${1} already exists. Opening for editing..."
             else
                 cp -av /usr/share/${_name}/example.conf /etc/"${1}".conf
             fi
@@ -244,11 +240,11 @@ function edit_ddnsd_conf () {
     # Open the configuration file in the default editor
     if test -n "${_editor}" ; then
         "${_editor}" /etc/ddnsd.conf.d/"${1}".conf || {
-            event_log "error" "Failed to open configuration file for ${1} in ${_editor}."
+            event-log "error" "Failed to open configuration file for ${1} in ${_editor}."
             exit 1
         }
     else
-        event_log "error" "No editor set. Please set the EDITOR environment variable."
+        event-log "error" "No editor set. Please set the EDITOR environment variable."
         exit 0
     fi
 
@@ -256,11 +252,11 @@ function edit_ddnsd_conf () {
 
 function restart_ddnsd () {
 
-    root_check ; event_log "info" "Restarting ddnsd service..."
+    root_check ; event-log "info" "Restarting ddnsd service..."
 
     # Remove the IP address file if it exists before restarting
-    rm -f ${_ddnsdIPFile} || event_log "warning" "Failed to remove IP address file ${_ddnsdIPFile}. Continuing..."
-    systemctl restart ddnsd.service || { event_log "error" "Failed to restart ddnsd service." ; exit 1 ; }
+    rm -f ${_ddnsdIPFile} || event-log "warning" "Failed to remove IP address file ${_ddnsdIPFile}. Continuing..."
+    systemctl restart ddnsd.service || { event-log "error" "Failed to restart ddnsd service." ; exit 1 ; }
 
 }
 
@@ -288,7 +284,7 @@ if [[ ! -f $_config ]] ; then
 fi
 
 [[ "$(yq -r '.format' "$_config")" == "ddnsd" ]] ||
-event_log "error" "Invalid configuration file format!"
+event-log "error" "Invalid configuration file format!"
 
 ### Global Configuration Variables ###
 
