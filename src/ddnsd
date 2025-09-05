@@ -30,16 +30,19 @@ function sign_handler () {
 
 function event-log () {
 
-    local _eventType="${1:-info}"
-    local _eventMessage="${2:-No message provided}"
+    local _event="${1:-info}"
+    local _message="${2:-No message provided}"
 
-    case "${_eventType}" in
-        info|warning|error|critical )
-            logger -t "${_name}" -p user.${_eventType} "${_eventMessage}"
-            [[ "${_eventType}" == "error" ]] && exit 1
+    case "$_event" in
+        info|warning                )
+            logger -t "${_name}" -p user."$_event" "$_message"
+        ;;
+        error|critical              )
+            logger -t "$_name" -p user."$_event" "$_message"
+            exit 1
         ;;
         *                           )
-            logger -t "${_name}" -p user.unknown "${_eventMessage}"
+            logger -t "$_name" -p user.unknown "$_message"
         ;;
     esac
 
@@ -249,14 +252,14 @@ _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 _ip="/tmp/ddnsd.ip"
 _editor="${EDITOR:-nano}"
 
-_config="$USER/.config/${_name}/config.yaml"
+_config="/etc/ddnsd/config.yaml"
 
 [[ "$(yq -r '.format' "$_config")" == "ddnsd" ]] ||
 event-log "error" "Invalid configuration file format!"
 
 ### Global Configuration Variables ###
 
-_lookup="$(yq -r '.ip_lookup' "$_config" 2> /dev/null)"
+_lookup="$(yq -r '.lookup' "$_config" 2> /dev/null)"
 _provider="$(yq -r '.provider' "$_config" 2> /dev/null)"
 _domain="$(yq -r '.domain' "$_config" 2> /dev/null)"
 _token="$(yq -r '.token' "$_config" 2> /dev/null)"
