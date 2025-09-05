@@ -90,8 +90,8 @@ function stop-ddnsd () {
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || echo "No ddnsd process found to stop."
-    rm -f ${_ddnsdIPFile} ||
-    event-log "error" "Failed to remove IP address file ${_ddnsdIPFile}."
+    rm -f ${_ip} ||
+    event-log "error" "Failed to remove IP address file ${_ip}."
 
     event-log "info" "ddnsd service stopped."
 
@@ -103,7 +103,7 @@ function duck_ddnsd () {
 
     local _url _secure _verbose _ddns
 
-    _url="https://www.duckdns.org/update?domains=${_domain}&token=${_apiToken}&ip="
+    _url="https://www.duckdns.org/update?domains=${_domain}&token=$_token&ip="
 
     [[ "$_verbose" == "" || "$_verbose" == "Null" ]] &&
     event-log "error" "Verbose setting is required for DuckDNS, see $_config"
@@ -132,59 +132,59 @@ function duck_ddnsd () {
 
 function cloudflare_ddnsd () {
 
-    event-log "info" "Configuring Cloudflare for domain ${_domain}..."
+    event-log "info" "Configuring Cloudflare for domain $_domain"
 
     # Verify that the Cloudflare email set and is in the correct format
-    [[ "${_cloudflareEmail}" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || {
-        echo "Invalid Cloudflare email format: ${_cloudflareEmail}" ; exit 1
-    }
+    [[ "$_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] ||
+    event-log "error" "Please set a valid email address in the configuration."
 
     # Verify that the Cloudflare Zone ID is set
-    test -n "${_cloudflareZoneID}" || { echo "Please set CLOUDFLARE_ZONE_ID in the configuration." ; exit 1 ; }
+    [[ "$_zone" != "" && "$_zone" != "Null" ]] ||
+    event-log "error" "Cloudflare Zone ID is required, see $_config"
 
-    local _secure _verbose _current _keyUrl _authHeader _cloudflareURL
+    local _secure _verbose _current _keyUrl _header _cloudflareURL
 
     _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
-    _cloudflareURL="https://api.cloudflare.com/client/v4/zones"
+    _zoneURL="https://api.cloudflare.com/client/v4/zones"
 
 
     # Check if method is either token or global
-    case "${_cloudflareMethod}" in
-        "token"                 ) _authHeader="Authorization: Bearer" ;;
-        "global"                ) _authHeader="X-Auth-Key"            ;;
+    case "$_method" in
+        "token"                 ) _header="Authorization: Bearer" ;;
+        "global"                ) _header="X-Auth-Key"            ;;
         *                       )
-            echo "Invalid Cloudflare method: ${_cloudflareMethod}. Use 'token' or 'global'."
-            exit 1
+            event-log "error" "Unsupported Cloudflare authentication method: $_method"
         ;;
     esac
 
-    verifyKey="$(curl -X GET "$_keyUrl" --header "${_authHeader} ${_apiToken}" \
+    _verify="$(curl -X GET "$_keyUrl" --header "$_header $_method" \
         --header "Content-Type:  application/json" | jq -r '.result.status')"
 
-    test "${verifyKey}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
+    test "${_verify}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
 
-    event-log "info" "Verified Cloudflare API token = ${verifyKey}"
+    event-log "info" "Verified Cloudflare API token = ${_verify}"
 
-    _recordID=$(curl -s -X GET "${_cloudflareURL}/${_cloudflareZoneID}{/dns_records?type=A&name=${_domain}}" \
-        --header "X-Auth-Email: ${_cloudflareEmail}" \
-        --header "${_authHeader} ${_apiToken}" \
+    _record=$(curl -s -X GET "$_zoneURL/$_zone{/dns_records?type=A&name=$_domain}" \
+        --header "X-Auth-Email: $_email" \
+        --header "$_header $_token" \
         --header "Content-Type: application/json" | jq -r '.result[].id')
 
-    test -n "${_recordID}" || { echo "No DNS record found for domain ${_domain}." ; exit 1 ; }
+    test -n "$_record" || event-log "error" "No DNS record found for $_domain in zone $_zone"
 
-     _recordUpdate="$(curl -s -X PATCH "${_cloudflareURL}/${_cloudflareZoneID}/dns_records/${_recordID}" \
-        --header "X-Auth-Email: ${_cloudflareEmail}" \
-        --header "${_authHeader} ${_apiToken}" \
+     _update="$(curl -s -X PATCH "$_zoneURL/$_zone/dns_records/$_record" \
+        --header "X-Auth-Email: $_email" \
+        --header "$_header $_token" \
         --header "Content-Type: application/json" \
         --data "{
             \"type\": \"A\",
             \"name\": \"${_domain}\",
-            \"content\": \"$(cat ${_ddnsdIPFile})\",
-            \"ttl\": ${_cloudflareTTL},
-            \"proxied\": ${_cloudflareProxy}
+            \"content\": \"$(cat $_ip)\",
+            \"ttl\": $_ttl,
+            \"proxied\": $_proxy
         }" | jq -r '.success')"
 
-        test "${_recordUpdate}" = "true" || { event-log "error" "${_domain} dns record update failed." ; exit 1 ; }
+        test "$_update" = "true" ||
+        event-log "error" "Failed to update Cloudflare DNS record for $_domain"
 
     event-log "info" "Cloudflare DNS record updated successfully."
 
@@ -248,7 +248,7 @@ function restart_ddnsd () {
     root-check ; event-log "info" "Restarting ddnsd service..."
 
     # Remove the IP address file if it exists before restarting
-    rm -f ${_ddnsdIPFile} || event-log "warning" "Failed to remove IP address file ${_ddnsdIPFile}. Continuing..."
+    rm -f ${_ip} || event-log "warning" "Failed to remove IP address file ${_ip}. Continuing..."
     systemctl restart ddnsd.service || { event-log "error" "Failed to restart ddnsd service." ; exit 1 ; }
 
 }
@@ -258,7 +258,7 @@ set -eo pipefail
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 
-_ddnsdIPFile="/tmp/ddnsd.ip"
+_ip="/tmp/ddnsd.ip"
 _editor="${EDITOR:-nano}"
 
 _config="$USER/.config/${_name}/config.yaml"
