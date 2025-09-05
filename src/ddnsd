@@ -244,7 +244,7 @@ function restart-ddnsd () {
 }
 
 # Uncomment for debugging
-set -euox pipefail
+# set -euox pipefail
 
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
