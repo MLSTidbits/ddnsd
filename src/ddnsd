@@ -50,7 +50,7 @@ function event-log () {
 
 function monitor-ip-address () {
 
-    root-check ; event-log "info" "Starting ddnsd service..."
+    root-check
 
     [[ "$_domain" == "" || "$_domain" == "Null" ]] &&
     event-log "error" "Domain Name is required, see $USER/.config/ddnsd/config.yaml"
@@ -60,10 +60,14 @@ function monitor-ip-address () {
 
     while true ; do
 
-        event-log "info" "Checking IP address using $_lookup service"
-
         # Check if the IP lookup service is set
         _current="$(check-ip)"
+
+        if [[ "$_current" == "" ]] ; then
+            event-log "warning" "Failed to retrieve current IP address from $_lookup service"
+        else
+            event-log "info" "Current IP address retrieved: $_current"
+        fi
 
         _saved="$(cat /tmp/ddnsd.ip 2>/dev/null || echo "unknown")"
 
@@ -141,8 +145,11 @@ function cloudflare-ddns () {
     event-log "info" "Configuring Cloudflare for domain $_domain"
 
     # Verify that the Cloudflare email set and is in the correct format
-    [[ "$_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] ||
-    event-log "error" "Please set a valid email address in the configuration."
+    [[ "$_email" != "" && "$_email" != "Null" ]] ||
+    event-log "error" "Cloudflare email is required, see $_config"
+
+    [[ ! "$_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] &&
+    event-log "error" "$_email Invalid email format for Cloudflare, see $_config"
 
     # Verify that the Cloudflare Zone ID is set
     [[ "$_zone" != "" && "$_zone" != "Null" ]] ||
@@ -227,21 +234,7 @@ function ddnsd-conf () {
 
 }
 
-function restart-ddnsd () {
-
-    root-check
-
-    # Remove the IP address file if it exists before restarting
-    rm -f ${_ip} || event-log "warning" "Failed to remove IP address file ${_ip}. Continuing..."
-
-    if ! systemctl restart ddnsd.service ; then
-        echo "Failed to restart ddnsd service."
-        event-log "error" "Failed to restart ddnsd service."
-    fi
-
-    event-log "info" "ddnsd service restarted successfully."
-
-}
+function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
 # Uncomment for debugging
 # set -euox pipefail
@@ -259,23 +252,23 @@ event-log "error" "Invalid configuration file format!"
 
 ### Global Configuration Variables ###
 
-_lookup="$(yq -r '.lookup' "$_config" 2> /dev/null)"
-_provider="$(yq -r '.provider' "$_config" 2> /dev/null)"
-_domain="$(yq -r '.domain' "$_config" 2> /dev/null)"
-_token="$(yq -r '.token' "$_config" 2> /dev/null)"
+_lookup="$(yq -r '.lookup' "$_config")"
+_provider="$(yq -r '.provider' "$_config")"
+_domain="$(yq -r '.domain' "$_config")"
+_token="$(yq -r '.token' "$_config")"
 
 ### Cloudflare Specific Configuration Variables ###
 
-_email="$(yq -r '.cloudflare.email' "$_config" 2> /dev/null)"
-_method="$(yq -r '.cloudflare.method' "$_config" 2> /dev/null)"
-_zone="$(yq -r '.cloudflare.zone' "$_config" 2> /dev/null)"
-_proxy="$(yq -r '.cloudflare.proxy' "$_config" 2> /dev/null)"
-_ttl="$(yq -r '.cloudflare.ttl' "$_config" 2> /dev/null)"
+_email="$(yq -r '.cloudflare.email' "$_config")"
+_method="$(yq -r '.cloudflare.method' "$_config")"
+_zone="$(yq -r '.cloudflare.zone' "$_config")"
+_proxy="$(yq -r '.cloudflare.proxy' "$_config")"
+_ttl="$(yq -r '.cloudflare.ttl' "$_config")"
 
 ### DuckDNS Specific Configuration Variables ###
 
-_insecure="$(yq -r '.duckdns.insecure' "$_config" 2> /dev/null)"
-_verbose="$(yq -r '.duckdns.verbose' "$_config" 2> /dev/null)"
+_insecure="$(yq -r '.duckdns.insecure' "$_config")"
+_verbose="$(yq -r '.duckdns.verbose' "$_config")"
 
 # Trap errors and log them
 trap sign_handler SIGINT SIGTERM SIGQUIT
