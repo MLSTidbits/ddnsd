@@ -237,7 +237,8 @@ function restart-ddnsd () {
 
 }
 
-set -eo pipefail
+# Uncomment for debugging
+set -euox pipefail
 
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
@@ -312,14 +313,14 @@ EOF
 _statusInfo="$(cat <<EOF
 ${_versionInfo}
 
-DDNS Provider:          ${_provider:-not set}
-Domain Name:            ${_domain:-not set}
+DDNS Provider:          $_provider
+Domain Name:            $_domain
 IP Address:             $(cat /tmp/ddnsd.ip 2>/dev/null || echo "not set")
 
 Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "${_domain}" &> /dev/null && echo "reachable" || echo "unreachable")
+DDNS Status:            $(ping -c 1 "$_domain" &> /dev/null && echo "reachable" || echo "unreachable")
 
-Configuration File:     ${_ddnsdConfig}
+Configuration File:     $_config
 EOF
 )"
 
