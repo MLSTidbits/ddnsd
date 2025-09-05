@@ -9,7 +9,7 @@ lookup: icanhazip
 # powerful, DuckDNS is simpler to set up and use for basic needs.
 provider: duckdns
 
-# Inorder for ddns to work, you must have a domain name registered with
+# In order for ddns to work, you must have a domain name registered with
 # the service you choose. For DuckDNS, this is a subdomain of duckdns.org
 # making your full domain name <subdomain>.duckdns.org.
 #
