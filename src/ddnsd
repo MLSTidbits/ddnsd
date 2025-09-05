@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-# Copyright (C) 2025 Michael Schaecher <MichaelLeeSchaecher@gmail.com>
+# Copyright (C) 2025 Michael Schaecher <michaelschaecher@mlstidbits.com>
+# Copyright (C) 2025 MLS Tidbits <contact@mlstidbits.com>
+
+# This program is free software: you can redistribute it and/or modify.
 
 # Check if the script is run as root
 function root-check () {
