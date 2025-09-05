@@ -192,19 +192,18 @@ function cloudflare_ddnsd () {
 
 function check-ip () {
 
-    local _ip
+    local _service
 
-    case "${_ipLookup}" in
-        "icanhazip"             ) _ip="${_ipLookup}.com"   ;;
-        "ipinfo"                ) _ip="${_ipLookup}.io/ip" ;;
-        "ifconfig"              ) _ip="${_ipLookup}.co"    ;;
+    case "$_lookup" in
+        "icanhazip"             ) _service="$_lookup.com"   ;;
+        "ipinfo"                ) _service="$_lookup.io/ip" ;;
+        "ifconfig"              ) _service="$_lookup.co"    ;;
         *                       )
-            event-log "error" "Unsupported IP lookup service: ${_ipLookup}"
-            exit 1
+            event-log "error" "Unsupported IP lookup service: $_lookup"
         ;;
     esac
 
-    curl -s "https://${_ip}"
+    curl -s "https://$_service"
 }
 
 function edit_ddnsd_conf () {
