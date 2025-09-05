@@ -1,19 +1,13 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Source: https://github.com/MichaelSchaecher/ddnsd
+Source: https://github.com/MLSTidbits/ddnsd
 Upstream-Name: ddnsd
 Upstream-Contact: Michael Schaecher <michaelleeschaecher@gamil.com>
 
-Files:
- debian/*
- etc/*
- usr/bin/ddnsd
- usr/lib/systemd/system/ddnsd.service
- usr/share/doc/ddnsd/*
- usr/share/man/man/ddnsd.8.gz
- usr/share/man/man5/ddnsd.conf.5.gz
+Files:*
 
 Copyright:
- 2025 Michael Schaecher <michaelleeschaecher@gmail.com>
+ 2025 Michael Schaecher <michaelschaecher@mlstidbits.com>
+ 2025 MLS Tidbits <contact@mlstidbits.com>
 License: GPL-3.0+
 
 License: GPL-3.0+
