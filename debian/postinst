@@ -12,10 +12,15 @@ case "$1" in
         fi
 
         # Reload systemd and start or restart services
+        # shellcheck disable=SC2086
         if [ -d /run/systemd/system ]; then
             systemctl --system daemon-reload >/dev/null || true
             [ -n "$2" ] && _dh_action=restart || _dh_action=start
             deb-systemd-invoke $_dh_action 'ddnsd.service' >/dev/null || true
+        fi
+
+        if [ -f /etc/ddnsd.conf ]; then
+            mv /etc/ddnsd.conf /etc/ddnsd/ddnsd.conf.old
         fi
     ;;
     failed-upgrade                               ) ;;
