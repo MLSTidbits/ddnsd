@@ -251,19 +251,6 @@ _editor="${EDITOR:-nano}"
 
 _config="$USER/.config/${_name}/config.yaml"
 
-if [[ ! -f $_config ]] ; then
-    echo "Configuration file not found: ${_config}"
-    sleep 2
-    cp -av /usr/share/${_name}/ddnsd.example.yaml "$_config" || {
-        echo "Failed to copy example configuration to ${_config}" ; exit 1 ;
-    }
-    echo "Example configuration copied to ${_config}. Please edit the file and set the required values."
-    sleep 2
-    "${_editor}" "$_config" || {
-        echo "Failed to open configuration file in ${_editor}." ; exit 1 ;
-    }
-fi
-
 [[ "$(yq -r '.format' "$_config")" == "ddnsd" ]] ||
 event-log "error" "Invalid configuration file format!"
 
