@@ -66,8 +66,8 @@ function monitor-ip-address () {
             echo "${_current}" > /tmp/ddnsd.ip
 
             case "${_provider}" in
-                duck            ) duck_ddnsd       ;;
-                cloudflare      ) cloudflare_ddnsd ;;
+                duck            ) duck-ddns       ;;
+                cloudflare      ) cloudflare-ddns ;;
                 *               )
                     echo "Unsupported DDNS provider: ${_provider}"
                     exit 1
@@ -97,7 +97,7 @@ function stop-ddnsd () {
 
 }
 
-function duck_ddnsd () {
+function duck-ddns () {
 
     event-log "info" "Configuring DuckDNS for domain $_domain..."
 
@@ -130,7 +130,7 @@ function duck_ddnsd () {
 
 }
 
-function cloudflare_ddnsd () {
+function cloudflare-ddns () {
 
     event-log "info" "Configuring Cloudflare for domain $_domain"
 
