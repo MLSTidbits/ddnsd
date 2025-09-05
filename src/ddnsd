@@ -99,34 +99,34 @@ function stop-ddnsd () {
 
 function duck_ddnsd () {
 
-    event-log "info" "Configuring DuckDNS for domain ${_domain}..."
+    event-log "info" "Configuring DuckDNS for domain $_domain..."
 
-    local _duckDNSUrl _serviceType _verboseFlag
+    local _url _secure _verbose _ddns
 
-    _duckDNSUrl="https://www.duckdns.org/update?domains=${_domain}&token=${_apiToken}&ip="
-    _verboseFlag="verbose=${_duckDNSVerbose}"
+    _url="https://www.duckdns.org/update?domains=${_domain}&token=${_apiToken}&ip="
 
-    if test "${_duckDNSInsecure}" = "true" ; then
-        serviceType="-kK"
-        event-log "warning" "Using nsecure connection for DuckDNS updates."
-    else
-        serviceType="-k"
-    fi
+    [[ "$_verbose" == "" || "$_verbose" == "Null" ]] &&
+    event-log "error" "Verbose setting is required for DuckDNS, see $_config"
 
-    # Verify if the domain name is set
-    case "$(echo "url=${_duckDNSUrl}&${_verboseFlag}" | curl ${serviceType})" in
-        *"OK"*              )
-            event-log "info" "DuckDNS update successful for domain ${_domain}."
-        ;;
-        *"KO"*              )
-            event-log "error" "DuckDNS update failed for domain ${_domain}."
-            exit 1
-        ;;
-        *                   )
-            event-log "error" "Unexpected response from DuckDNS for domain ${_domain}."
-            exit 1
-        ;;
-    esac
+    [[ "$_insecure" == "" || "$_insecure" == "Null" ]] &&
+    event-log "error" "Insecure setting is required for DuckDNS, see $_config"
+
+    [[ "$_insecure" == "true" ]] && {
+    event-log "warning" "Insecure mode enabled. SSL certificate verification is disabled."
+    _secure="-kk" ; }
+
+    [[ "$_insecure" == "false" ]] && _secure="-k"
+
+    _ddns="$(curl -s "url=${_url}&${_verbose}" | grep -oE 'OK|KO')"
+
+    [[ "$_ddns" == "OK" ]] &&
+    event-log "info" "DuckDNS update successful for domain ${_domain}."
+
+    [[ "$_ddns" == "KO" ]] &&
+    event-log "error" "DuckDNS update failed for domain ${_domain}."
+
+    [[ "$_ddns" != "OK" && "$_ddns" != "KO" ]] &&
+    event-log "error" "Unexpected response from DuckDNS: ${_ddns}"
 
 }
 
@@ -142,7 +142,7 @@ function cloudflare_ddnsd () {
     # Verify that the Cloudflare Zone ID is set
     test -n "${_cloudflareZoneID}" || { echo "Please set CLOUDFLARE_ZONE_ID in the configuration." ; exit 1 ; }
 
-    local _serviceType _verboseFlag _current _keyUrl _authHeader _cloudflareURL
+    local _secure _verbose _current _keyUrl _authHeader _cloudflareURL
 
     _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
     _cloudflareURL="https://api.cloudflare.com/client/v4/zones"
@@ -266,7 +266,7 @@ _config="$USER/.config/${_name}/config.yaml"
 if [[ ! -f $_config ]] ; then
     echo "Configuration file not found: ${_config}"
     sleep 2
-    cp -av /usr/share/${_name}/ddnsd.exmple.yaml "$_config" || {
+    cp -av /usr/share/${_name}/ddnsd.example.yaml "$_config" || {
         echo "Failed to copy example configuration to ${_config}" ; exit 1 ;
     }
     echo "Example configuration copied to ${_config}. Please edit the file and set the required values."
