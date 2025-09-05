@@ -206,13 +206,34 @@ function check-ip () {
     curl -s "https://$_service"
 }
 
-function restart_ddnsd () {
+function ddnsd-conf () {
 
-    root-check ; event-log "info" "Restarting ddnsd service..."
+    # Check if the user is root or has permission to edit the configuration file.
+    # if check fails then rerun the script with sudo.
+    root-check
+
+    if $_editor "$_config" ; then
+        event-log "info" "Configuration file $_config edited successfully."
+    else
+        echo "Failed to open configuration file in ${_editor}."
+        event-log "error" "Failed to open configuration file in ${_editor}."
+    fi
+
+}
+
+function restart-ddnsd () {
+
+    root-check
 
     # Remove the IP address file if it exists before restarting
     rm -f ${_ip} || event-log "warning" "Failed to remove IP address file ${_ip}. Continuing..."
-    systemctl restart ddnsd.service || { event-log "error" "Failed to restart ddnsd service." ; exit 1 ; }
+
+    if ! systemctl restart ddnsd.service ; then
+        echo "Failed to restart ddnsd service."
+        event-log "error" "Failed to restart ddnsd service."
+    fi
+
+    event-log "info" "ddnsd service restarted successfully."
 
 }
 
@@ -308,10 +329,9 @@ EOF
 case "${1}" in
     start                       ) monitor-ip-address     ;;
     stop                        ) stop-ddnsd             ;;
-    restart                     ) restart_ddnsd          ;;
+    restart                     ) restart-ddnsd          ;;
     status                      ) echo "${_statusInfo}"  ;;
-    config                      )
-    ;;
+    config                      ) ddnsd-conf "$@"        ;;
     help                        ) echo "${_helpInfo}"    ;;
     version                     ) echo "${_versionInfo}" ;;
     *                           )
