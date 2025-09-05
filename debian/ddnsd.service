@@ -5,7 +5,7 @@ After = network.target network-online.target
 [Service]
 Type = simple
 LogLevelMax = notice
-EnvironmentFile = /etc/ddnsd.conf
+EnvironmentFile = /etc/ddnsd/config.yaml
 ExecStart = /usr/bin/ddnsd start
 
 [Install]
