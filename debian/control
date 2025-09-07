@@ -3,7 +3,7 @@ Section: net
 Priority: optional
 Maintainer: MLS Tidbits <contact@mlstidbits.com>
 Build-Depends:
- debhelper-compat (= 13), pandoc, dh-make, git, dh-gitchangelog
+ debhelper-compat (= 13), pandoc, dh-make, git
 Standards-Version: 4.6.0
 Homepage: https://mlstidbits.com
 Vcs-Browser: https://github.com/MLSTidbits/ddnsd
@@ -13,7 +13,7 @@ Rules-Requires-Root: no
 Package: ddnsd
 Architecture: any
 Depends:
- yq, jq, curl, nano, systemd
+ curl, nano, systemd
 Description: Dynamic DNS client for updating DNS records
  ddnsd is a dynamic DNS client that updates DNS records based on the current
  public IP address of the system. It supports multiple DNS providers and can
