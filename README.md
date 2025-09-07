@@ -5,8 +5,8 @@
         width="auto"
         height="200"
     />
-    <p style="font-weight: bold; font-size: 64px;">ddnsd</p>
-    <p style="font-size: 24px;">A lightweight Dynamic DNS updater daemon</p>
+    <h1><b>DDNSD</b></h1>
+    <p>A lightweight Dynamic DNS updater daemon</p>
 </div>
 
 ## About
