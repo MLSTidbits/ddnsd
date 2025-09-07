@@ -1,2 +1,2 @@
 src/ddnsd usr/bin/
-src/config.yaml etc/ddnsd/
+src/config etc/ddnsd/
