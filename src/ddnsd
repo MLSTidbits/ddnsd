@@ -53,7 +53,7 @@ function monitor-ip-address () {
     root-check
 
     [[ "$_domain" == "" || "$_domain" == "Null" ]] &&
-    event-log "error" "Domain Name is required, see $USER/.config/ddnsd/config.yaml"
+    event-log "error" "Domain Name is required, see $_config"
 
     [[ "$_token" == "" || "$_token" == "Null" ]] &&
     event-log "error" "Missing API Token for Cloudflare!"
