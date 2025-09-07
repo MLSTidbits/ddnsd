@@ -1,10 +1,12 @@
-<div align="right">
+<div align="center">
     <img
         src="images/logo.png"
         alt="ddnsd logo"
         width="auto"
-        height="360"
+        height="200"
     />
+    <p style="font-weight: bold; font-size: 64px;">ddnsd</p>
+    <p style="font-size: 24px;">A lightweight Dynamic DNS updater daemon</p>
 </div>
 
 ## About
