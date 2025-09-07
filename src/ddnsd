@@ -99,7 +99,7 @@ function stop-ddnsd () {
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || echo "No ddnsd process found to stop."
-    rm -f ${_ip} ||
+    rm -f "$_ip" ||
     event-log "error" "Failed to remove IP address file ${_ip}."
 
     event-log "info" "ddnsd service stopped."

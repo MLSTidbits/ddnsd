@@ -3,25 +3,22 @@
 #     - ipinfo:    A service that provides your public IP address along with additional information
 #                  such as location and ISP.
 #     - icanhazip: A popular service that returns your public IP address in plain text.
-#
 # Default: icanhazip.]
 #LOOKUP=icanhazip
 
 # This setting specifies which dynamic DNS provider to use. You can choose between
 # cloudflare and duckdns.
-#
 # Default: duckdns.
 PROVIDER=cloudflare
 
 # The domain name you want to update. For Cloudflare, this should be the full domain
 # name (e.g., example.com), and for DuckDNS, it should be just the subdomain (e.i.
 # myduckdns) you created on DuckDNS.
-DOMAIN=michaelschaecher.us
+DOMAIN=example.com
 
 # This is the API token for your Cloudflare or DuckDNS account. For Cloudflare, you can
 # create a token with the necessary permissions in your Cloudflare dashboard. For DuckDNS,
 # you can find your token on the DuckDNS website after logging in.
-#
 # Example: 1234567890abcdef1234567890abcdef
 TOKEN=X8ImOCaayK8pUbabTVkba3lrKjIvuiM-_7OFC-1_
 
@@ -29,18 +26,18 @@ TOKEN=X8ImOCaayK8pUbabTVkba3lrKjIvuiM-_7OFC-1_
 
 # Your Cloudflare account email address. This is required if you are using Cloudflare
 # as your dynamic DNS provider.
-#
 # Example: myemail@email.com
 EMAIL=mscahecher78@gmail.com
 
-ZONE=michaelschaecher.us
+# The Zone ID is the unique identifier for your domain in Cloudflare. You can find this in your
+# Cloudflare dashboard under the domain settings. This setting is not required for DuckDNS.
+# Example: 1234567890abcdef1234567890abcdef
+#ID=123456
 
 # Cloudflare uses either a token or global API key for authentication. For most users the token
 # is the preferred method.
-#
 # default: token
-#METHOD=token
-
+METHOD=token
 
 # For Cloudflare, this is the Zone ID of your domain. You can find this in your Cloudflare
 # dashboard under the domain settings. This setting is not required for DuckDNS.
@@ -63,9 +60,8 @@ PROXY=false
 # will be cached by DNS resolvers.
 # Values: (60, 120, 300, 3600, 7200, 14400, 21600, 43200, 86400)
 # Cloudflare sets the default TTL to 300 seconds (5 minutes or auto) if not specified.
-#
 # Default: 300.
-TTL=60
+#TTL=60
 
 ### DuckDNS Specific Settings ###
 

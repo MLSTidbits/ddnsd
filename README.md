@@ -9,151 +9,175 @@
 
 ## About
 
-Most IP Addresses provided by ISPs are dynamic, meaning they can change over time. This can be problematic if you want to self-host services like a web/game server vps or vpn. There needs to be a way to update the DNS records automatically when your IP changes. This is where **ddnsd** comes in. **ddnsd** is a **bash** script that runs in the background and checks your public IP address for any changes. If a change is detected, it updates the DNS records of your domain using the [Cloudflare](https://developers.cloudflare.com/dns/manage-dns-records/how-to/managing-dynamic-ip-addresses/) or [DuckDNS](https://www.duckdns.org/) API.
+`ddnsd` is a lightweight Dynamic DNS updater daemon for Linux (DuckDNS & Cloudflare supported).
+It runs as a systemd service and reads a shell-style configuration file.
 
-### Features
+## Features
 
-- **Dynamic DNS Updates**: Automatically updates DNS records when your IP changes.
-- **Multiple Providers**: Supports both [Cloudflare](https://www.cloudflare.com/learning/dns/glossary/dynamic-dns/) and [DuckDNS](https://www.duckdns.org/).
-- **Configurable**: Easily configure providers settings
-- **Domain Management**: Add, delete, and list domains.
-- **IP Address Detection**: Automatically detects your public IP address.
-- If IP look up fails, then it will retry every 5 minutes 3 times before giving up.
-- **Systemd Service**: Runs as a systemd service for easy management.
-
-### Requirements
-
-For **`ddnsd`** to work correctly, you need a standard server or LXC system with the following. For best results, it is recommended use [Proxmox](https://www.proxmox.com/en/) with an [Debian](https://www.debian.org/) LXC container or full VM server.
-
-- 1.5Ghz CPU or higher
-- 1GB RAM or higher (512MB for LXC container)
-- 25GB Disk Space or higher (4GB for LXC container)
-- Network connection
-- **Cloudflare** or **DuckDNS** account.
-
-### Drawbacks
-
-- **VPS/VPN Conflicts**: If you are using a VPN service, you may encounter issues with the Cloudflare proxy. In this case, it is recommended to disable the proxy in the configuration file.
-- **Security**: Using HTTP instead of HTTPS for DuckDNS can expose your credentials. It is recommended to use HTTPS whenever possible.
-- **Limited to Cloudflare and DuckDNS**: Currently, only these two providers are supported. If you need support for other providers, follow [contributing](#contributing) section on how to contribute to the project.
+- Runs as a systemd service (`ddnsd.service`)
+- Supports DuckDNS and Cloudflare providers
+- Configured via a plain shell-style config (`KEY=value`)
+- Logs available via `journalctl -u ddnsd`
 
 ## Installation
 
-The application is designed to be isntalled on a Debian/Ubuntu system via `apt` package manager. To install **`ddnsd`**, follow the steps provided on the [ropistories](https://repository.howtonebie.com/) webpage. To install on a non-Debian system, you'll to clone the repository `git clone https://github.com/MichaelSchaecher/ddnsd.git` or `gh repo clone MichaelSchaecher/ddnsd` and copy the necessary files to your system.
+### Install from the APT repository
 
-```console
-sudo cp -av ddnsd /usr/bin/
-sudo cp -av ddnsd.conf /etc/ddnsd.conf
+The instructions for adding the [MLS Tidbits](https://mlstidbits.com) APT repository at the [archive](https://archive.mlstidbits.com).
+
+```bash
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/MLSTidbits.gpg] https://archive.mlstidbits.com/ stable main" |
+sudo tee /etc/apt/sources.list.d/MLSTidbits.list
+
+wget -qO - https://archive.mlstidbits.com/key/MLSTidbits.gpg | sudo dd of=/usr/share/keyrings/MLSTidbits.gpg
 ```
 
-`Pandoc` is required to generate the manpage file. If `pandoc` is installed then run the following command to generate the manpage file:
+### Manual install (from source)
 
-```console
-sudo pandoc -s -t man man/ddnsd.8.md -o /usr/share/man/man8/ddnsd.8
-sudo pandoc -s -t man man/ddnsd-conf.8.md -o /usr/share/man/man8/ddnsd-conf.8
-sudo mandb
+Do the following to install `ddnsd` from source for none Debian-based distributions like Fedora, Arch, etc.
+
+```bash
+git clone https://github.com/yourusername/ddnsd.git
+cd ddnsd
+sudo install -m 0755 ddnsd /usr/local/bin/ddnsd
+# (copy service file if provided)
+sudo cp ddnsd.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable ddnsd
 ```
 
 ## Configuration
 
-The configuration file is located at `/etc/ddnsd.conf`. You should edit this file to set your Cloudflare or DuckDNS credentials, as well as any other settings you wish to customize.
+Important: The configuration file is a shell-style file (key=value) located at: `/etc/ddnsd/config`. The script sources this file, so values should be valid shell assignments (no YAML).
 
-### DDNS Provider
-
-This setting specifies which dynamic DNS provider to use. You can choose between `cloudflare` and `duckdns`. The default is `duckdns`.
-
-> **DDNS_PROVIDER**="duckdns"
-
-### Domain Name
-
-The domain name you want to update. For Cloudflare, this should be the full domain name (e.g., `example.com`), and for DuckDNS, it should be just the subdomain (e.g., `myduckdns`) you created on DuckDNS. The default is `myduckdns`.
+### Global variables (defaults shown)
 
 ```bash
-DOMAIN_NAME="myduckdns"
+# What service to use for the IP address lookup. Options are ( ifconfig or icanhaz ):
+#     - ifconfig:  A simple service that returns your public IP address in plain text.
+#     - ipinfo:    A service that provides your public IP address along with additional information
+#                  such as location and ISP.
+#     - icanhazip: A popular service that returns your public IP address in plain text.
+#
+# Default: icanhazip.]
+#LOOKUP=icanhazip
+
+# This setting specifies which dynamic DNS provider to use. You can choose between
+# cloudflare and duckdns.
+#
+# Default: duckdns.
+#PROVIDER=duckdns
+
+# The domain name you want to update. For Cloudflare, this should be the full domain
+# name (e.g., example.com), and for DuckDNS, it should be just the subdomain (e.i.
+# myduckdns) you created on DuckDNS.
+DOMAIN=example.com
+
+# This is the API token for your Cloudflare or DuckDNS account. For Cloudflare, you can
+# create a token with the necessary permissions in your Cloudflare dashboard. For DuckDNS,
+# you can find your token on the DuckDNS website after logging in.
+#
+# Example: 1234567890abcdef1234567890abcdef
+TOKEN=1234567890abcdef1234567890abcdef
 ```
 
-### Cloudflare Email
-
-Your Cloudflare account email address. This is required if you are using Cloudflare as your dynamic DNS provider. Example: myemail@email.com
+### Cloudflare-specific variables (optional; used when PROVIDER=cloudflare)
 
 ```bash
-CLOUDFLARE_EMAIL="myemail@email.com"
+# Your Cloudflare account email address. This is required if you are using Cloudflare
+# as your dynamic DNS provider.
+# Example: myemail@email.com
+EMAIL=mscahecher78@gmail.com
+
+# The Zone ID is the unique identifier for your domain in Cloudflare. You can find this in your
+# Cloudflare dashboard under the domain settings. This setting is not required for DuckDNS.
+# Example: 1234567890abcdef1234567890abcdef
+#ID=123456
+
+# Cloudflare uses either a token or global API key for authentication. For most users the token
+# is the preferred method.
+# default: token
+METHOD=token
+
+# For Cloudflare, this is the Zone ID of your domain. You can find this in your Cloudflare
+# dashboard under the domain settings. This setting is not required for DuckDNS.
+#
+# Example: 1234567890abcdef1234567890abcdef
+ID=819997954458ad1be79b4ebb71b17b22
+
+# For Cloudflare, this setting allows you to enable or disable the proxy for your domain. If set
+# to true, Cloudflare will act as a proxy for your domain, providing additional security and
+# performance benefits.
+#
+#     **Note**: If you are using a VPS/VPN service then you may want to set this to `false`
+#               to avoid issues with the proxy. This is true for self-hosted VPN services
+#               like [WireGuard](https://www.wireguard.com/) or [OpenVPN](https://openvpn.net/).
+#
+# Default: true.
+PROXY=false
+
+# Time-to-live (TTL) for the DNS record in seconds. This setting controls how long the DNS record
+# will be cached by DNS resolvers.
+# Values: (60, 120, 300, 3600, 7200, 14400, 21600, 43200, 86400)
+# Cloudflare sets the default TTL to 300 seconds (5 minutes or auto) if not specified.
+# Default: 300.
+#TTL=60
 ```
 
-### API Token
-
-This is the API token for your Cloudflare or DuckDNS account. For Cloudflare, you can create a token with the necessary permissions in your Cloudflare dashboard. For DuckDNS, you can find your token on the DuckDNS website after logging in.
+### DuckDNS-specific variables (optional; used when PROVIDER=duckdns)
 
 ```bash
-API_TOKEN="your_api_token_here"
-```
+# This setting allows you to enable insecure connections to the DuckDNS API using HTTP instead
+# of HTTPS. This generally not recommended due to security concerns, but it can be useful in
+# certain situations.
+#
+# Default: false.
+#INSECURE=false
 
-### Cloudflare Zone ID
-
-For Cloudflare, this is the Zone ID of your domain. You can find this in your Cloudflare dashboard under the domain settings. This setting is not required for DuckDNS.
-
-```bash
-CLOUDFLARE_ZONE_ID="your_zone_id_here"
-```
-
-### DuckDNS Insecure Connections
-
-This setting allows you to enable insecure connections to the DuckDNS API using HTTP instead of HTTPS. This generally not recommended due to security concerns, but it can be useful in certain situations. The default is `false`.
-
-```bash
-DUCKDNS_INSECURE=false
-```
-
-### Cloudflare Proxy
-
-For Cloudflare, this setting allows you to enable or disable the proxy for your domain. If set to `true`, Cloudflare will act as a proxy for your domain, providing additional security and performance benefits. The default is `true`.
-
-> **Note**: If you are using a VPN service then you may want to set this to `false` to avoid issues with the proxy. This is true for self-hosted VPN services like [WireGuard](https://www.wireguard.com/) or [OpenVPN](https://openvpn.net/).
-
-```bash
-CLOUDFLARE_PROXY=true
-```
-
-### Cloudflare Renewal Interval
-
-This tells Cloudflare how often to renew the DNS record. The default is `3600` seconds (1 hour). In most cases, you can leave this as is, but if you have a dynamic IP address that changes frequently, you may want to set this to a lower value.
-
-```bash
-CLOUDFLARE_RENEWAL=3600
+# Should the output from DuckDNS be more verbose? This setting controls whether
+# This helps you see more detailed information about the updates being made.
+#
+# Default: false.
+#VERBOSE=false
 ```
 
 ## Usage
 
-Once you have installed and configured **`ddnsd`**, you can use it to manage your dynamic DNS records. The main command is `ddnsd`, which can be run with various options.
+If install from the APT repository, the service should be enabled and started automatically. However, you well need to create and edit the configuration file at `/etc/ddnsd/config` with your settings. When done, restart the service with: `sudo ddnsd restart`.
 
-### Basic Command
-
-To run the **`ddnsd`** command, simply execute:
+To verify that the service is running correctly, you can check the status with:
 
 ```bash
-ddnsd start -u/--update
+sudo ddnsd status
 ```
 
-This will check your current IP address and update your DNS records if necessary. The service will run in the background and periodically check for IP changes based on the configuration settings. Once the terminal is closed or `Ctrl+C` is pressed, the service will stop running.
+For manual installation, after copying the service file to `/usr/lib/systemd/system/`, enable and start the service with: Then edit the configuration file at `/etc/ddnsd/config` with your settings. When done, enable and start the service with:
 
-### Options
+```bash
+sudo systemctl enable --now ddnsd.service
+```
 
-- `start`: Start monitoring for IP changes and update DDNS
-- `stop`: Stop the ddnsd systemd service
-- `restart`: Restart the **`ddnsd`** service.
-- `status`: Display the current status of the **`ddnsd`** service.
-- `help`: Display help information for the **`ddnsd`** command.
-- `version`: Display the version of **`ddnsd`**.
-- `config`: Open the configuration file in the default text editor.
+View live logs: `sudo journalctl -t ddnsd -f`
 
-## Contributing
+## Files & locations
 
-Contributions are welcome! If you have suggestions for improvements or new features, please open an issue or submit a pull request on the [GitHub repository](https://github.com/MichaelSchaecher/ddnsd/pulls). Features and bug fixes are always welcome.
+- System config: /etc/ddnsd/config
+- Version (packaged): /usr/share/doc/ddnsd/version (if installed)
+- Systemd unit: ddnsd.service (install location: /etc/systemd/system/ddnsd.service or /lib/systemd/system/ depending on packaging)
 
-## Support
+## Troubleshooting
 
-If you encounter any issues or have questions, please open an issue on the [GitHub repository](https://github.com/MichaelSchaecher/ddnsd/issues).
+- If updates fail, check journalctl -u ddnsd for errors.
+- Ensure /etc/ddnsd/config contains valid KEY="value" entries (no YAML).
+- For Cloudflare, verify EMAIL, METHOD, TOKEN/API key and ID (zone id) are correct.
+- For DuckDNS, ensure DOMAIN matches the DuckDNS subdomain and TOKEN is valid.
 
-## License
+## Contact / Support
 
-Copyright (c) 2024 under the [GPL-3.0 License](COPYING) all rights reserved.
+If problems persist, include the output of:
+
+```bash
+sudo journalctl -t ddnsd --no-pager | tail -n 100
+```
+
+and your /etc/ddnsd/config (redacting secrets like TOKEN) when requesting help.
