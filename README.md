@@ -89,7 +89,7 @@ TOKEN=1234567890abcdef1234567890abcdef
 # Your Cloudflare account email address. This is required if you are using Cloudflare
 # as your dynamic DNS provider.
 # Example: myemail@email.com
-EMAIL=mscahecher78@gmail.com
+EMAIL=example@email.com
 
 # The Zone ID is the unique identifier for your domain in Cloudflare. You can find this in your
 # Cloudflare dashboard under the domain settings. This setting is not required for DuckDNS.
