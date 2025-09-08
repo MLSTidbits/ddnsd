@@ -135,6 +135,7 @@ function duck-ddns () {
 
 }
 
+# shellcheck disable=SC2155
 function cloudflare-ddns () {
 
     event-log "info" "Configuring Cloudflare for domain $_domain"
@@ -150,10 +151,8 @@ function cloudflare-ddns () {
     [[ "$_id" != "" && "$_id" != "Null" ]] ||
     event-log "error" "Cloudflare Zone ID is required, see $_config"
 
-    local _secure _verbose _current _keyUrl _header _cloudflareURL
-
-    _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
-    _idURL="https://api.cloudflare.com/client/v4/zones"
+    local _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
+    local _idURL="https://api.cloudflare.com/client/v4/zones"
 
 
     # Check if method is either token or global
@@ -165,24 +164,28 @@ function cloudflare-ddns () {
         ;;
     esac
 
-    _verify="$(curl -X GET "$_keyUrl" --header "$_header $_token" \
+    local _verify="$(curl -X GET "$_keyUrl" \
+        --header "$_header $_token" \
         --header "Content-Type:  application/json" | jq -r '.result.status')"
 
-    test "${_verify}" = "active" || { echo "(Cloudflare) API Token not active or invalid." ; exit 1 ; }
+    test "${_verify}" = "active" ||
+    event-log "error" "Cloudflare API token verification failed."
 
     event-log "info" "Verified Cloudflare API token = ${_verify}"
 
-    _record=$(curl -s -X GET "$_idURL/$_id{/dns_records?type=A&name=$_domain}" \
+    local _record=$(curl -s -X GET "$_idURL/$_id{/dns_records?type=A&name=$_domain}" \
         --header "X-Auth-Email: $_email" \
         --header "$_header $_token" \
         --header "Content-Type: application/json" | jq -r '.success')
 
-    [[ "$_record" == "true" ]] && event-log "info" "DNS record found for $_domain in zone $_id"
-    [[ "$_record" == "false" ]] && event-log "error" "No DNS record found for $_domain in zone $_id"
+    [[ "$_record" == "false" ]] &&
+    event-log "error" "No DNS record found for $_domain in zone $_id"
 
-    _current="$(check-ip)"
+    event-log "info" "Found DNS record for $_domain in zone $_id"
 
-     _update="$(curl -sS -X PUT "$_idURL/$_id/dns_records/$_record" \
+    local _current="$(check-ip)"
+
+    local _update="$(curl -sS -X PUT "$_idURL/$_id/dns_records/$_record" \
         --header "X-Auth-Email: $_email" \
         --header "$_header $_token" \
         --header "Content-Type: application/json" \
