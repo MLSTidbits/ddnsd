@@ -23,7 +23,9 @@ case "$1" in
             mv /etc/ddnsd.conf /etc/ddnsd/ddnsd.conf.old
         fi
 
-        [ -f /etc/ddnsd/config.yaml ] && rm /etc/ddnsd/config.yaml
+        [ -f /etc/ddnsd/config.yaml ] && rm -v /etc/ddnsd/config.yaml
+        [ -f /etc/ddnsd.conf.old ] && rm -vr /etc/ddnsd.conf.*
+
     ;;
     failed-upgrade                               ) ;;
     abort-upgrade|abort-deconfigure|abort-remove ) ;;
