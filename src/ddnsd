@@ -298,11 +298,8 @@ Version: ${_version}
 EOF
 )"
 
-if [[ "$(check-ip)" != "$(current-ip)" ]] ; then
-    _ip="$(current-ip) OUTDATED"
-else
-    _ip="$(current-ip)"
-fi
+[[ "$(check-ip)" != "$(current-ip)" ]] && _ip="$(current-ip) OUTDATED"
+[[ "$(check-ip)" == "$(current-ip)" ]] && _ip="$(current-ip) CURRENT"
 
 _statusInfo="$(cat <<EOF
 ${_versionInfo}
