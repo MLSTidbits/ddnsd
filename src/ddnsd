@@ -70,16 +70,16 @@ function monitor-ip-address () {
         [[ "$_current" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
         event-log "info" "Current IP address retrieved: $_current"
 
-        [[ "${_saved}" != "${_current}" ]] &&
-        event-log "info" "IP address changed: ${_saved} -> ${_current}"
-
-        case "${_provider}" in
-            duck            ) duck-ddns       ;;
-            cloudflare      ) cloudflare-ddns ;;
-            *               )
-                event-log "error" "Unsupported DDNS provider: ${_provider}"
-            ;;
-        esac
+        if [[ "${_saved}" != "${_current}" ]] ; then
+            event-log "info" "IP address changed: ${_saved} -> ${_current}"
+            case "${_provider}" in
+                duck            ) duck-ddns       ;;
+                cloudflare      ) cloudflare-ddns ;;
+                *               )
+                    event-log "error" "Unsupported DDNS provider: ${_provider}"
+                ;;
+            esac
+        fi
 
         event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
 
@@ -167,19 +167,21 @@ function cloudflare-ddns () {
 
     local _verify="$(curl -X GET "$_keyUrl" \
         --header "$_header $_token" \
-        --header "Content-Type:  application/json" | jq -r '.result.status')"
+        --header "Content-Type:  application/json" |
+        jq -r '.result.status')"
 
-    test "${_verify}" = "active" ||
+    [[ "$_verify" != "active" ]] &&
     event-log "error" "Cloudflare API token verification failed."
 
     event-log "info" "Verified Cloudflare API token = ${_verify}"
 
-    local _record=$(curl -s -X GET "$_idURL/$_id{/dns_records?type=A&name=$_domain}" \
+    local _record=$(curl -s -X GET "$_idURL/$_id/dns_records" \
         --header "X-Auth-Email: $_email" \
         --header "$_header $_token" \
-        --header "Content-Type: application/json" | jq -r '.success')
+        --header "Content-Type: application/json" |
+        jq -r '.success[].id')
 
-    [[ "$_record" == "false" ]] &&
+    [[ -z "$_record" ]] &&
     event-log "error" "No DNS record found for $_domain in zone $_id"
 
     event-log "info" "Found DNS record for $_domain in zone $_id"
