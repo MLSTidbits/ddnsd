@@ -13,7 +13,7 @@ function root-check () {
 # shellcheck disable=SC2329
 function sign_handler () {
 
-    local _signal; _signal="${1:-SIGINT}"
+    local _signal="${1:-SIGINT}"
 
     case "${_signal}" in
         SIGINT|SIGTERM|SIGQUIT  )
