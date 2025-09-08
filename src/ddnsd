@@ -109,9 +109,7 @@ function duck-ddns () {
 
     event-log "info" "Configuring DuckDNS for domain $_domain..."
 
-    local _url _secure _verbose _ddns
-
-    _url="https://www.duckdns.org/update?domains=${_domain}&token=$_token&ip="
+    local _url="https://www.duckdns.org/update?domains=${_domain}&token=$_token&ip="
 
     [[ "$_verbose" == "" || "$_verbose" == "Null" ]] &&
     event-log "error" "Verbose setting is required for DuckDNS, see $_config"
