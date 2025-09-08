@@ -28,6 +28,7 @@ function sign_handler () {
 
 }
 
+# shellcheck disable=SC2155
 function event-log () {
 
     local _event="${1:-info}"
@@ -48,6 +49,7 @@ function event-log () {
 
 }
 
+# shellcheck disable=SC2155
 function monitor-ip-address () {
 
     root-check
@@ -56,7 +58,6 @@ function monitor-ip-address () {
 
     [[ "$_token" == "Null" ]] && event-log "error" "Missing API Token for Cloudflare!"
 
-    # shellcheck disable=SC2155
     while true ; do
 
         # Check if the IP lookup service is set
@@ -86,6 +87,7 @@ function monitor-ip-address () {
     done
 }
 
+# shellcheck disable=SC2155
 function stop-ddnsd () {
 
     root-check
@@ -102,6 +104,7 @@ function stop-ddnsd () {
 
 }
 
+# shellcheck disable=SC2155
 function duck-ddns () {
 
     event-log "info" "Configuring DuckDNS for domain $_domain..."
