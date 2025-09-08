@@ -24,7 +24,9 @@ case "$1" in
         fi
 
         [ -f /etc/ddnsd/config.yaml ] && rm -v /etc/ddnsd/config.yaml
-        [ -f /etc/ddnsd.conf.old ] && rm -vr /etc/ddnsd.conf.*
+        [ -f /etc/ddnsd.conf.old ] && rm -v /etc/ddnsd.conf.old
+        [ -d /etc/ddnsd.conf.d ] && rm -vr /etc/ddnsd.conf.d
+        [ -f /etc/ddnsd.conf.dpkg-old ] && rm -v /etc/ddnsd.conf.dpkg-old
 
     ;;
     failed-upgrade                               ) ;;
