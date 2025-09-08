@@ -52,39 +52,35 @@ function monitor-ip-address () {
 
     root-check
 
-    [[ "$_domain" == "" || "$_domain" == "Null" ]] &&
-    event-log "error" "Domain Name is required, see $_config"
+    [[ "$_domain" == "Null" ]] && event-log "error" "Domain Name is required, see $_config"
 
-    [[ "$_token" == "" || "$_token" == "Null" ]] &&
-    event-log "error" "Missing API Token for Cloudflare!"
+    [[ "$_token" == "Null" ]] && event-log "error" "Missing API Token for Cloudflare!"
 
+    # shellcheck disable=SC2155
     while true ; do
 
         # Check if the IP lookup service is set
-        _current="$(check-ip)"
-        _saved="$(current-ip)"
+        local _current="$(check-ip)"
+        local _saved="$(current-ip)"
 
-        if [[ "$_current" == "" ]] ; then
-            event-log "warning" "Failed to retrieve current IP address from $_lookup service"
-        else
-            event-log "info" "Current IP address retrieved: $_current"
-        fi
+        [[ "$_current" == "" ]] &&
+        event-log "warning" "Failed to retrieve current IP address from $_lookup service"
 
-        if test "${_saved}" != "${_current}" ; then
-            event-log "info" "IP address changed: ${_saved} -> ${_current}"
-            echo "${_current}" > /tmp/ddnsd.ip
+        [[ "$_current" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
+        event-log "info" "Current IP address retrieved: $_current"
 
-            case "${_provider}" in
-                duck            ) duck-ddns       ;;
-                cloudflare      ) cloudflare-ddns ;;
-                *               )
-                    echo "Unsupported DDNS provider: ${_provider}"
-                    exit 1
-                ;;
-            esac
+        [[ "${_saved}" != "${_current}" ]] &&
+        event-log "info" "IP address changed: ${_saved} -> ${_current}"
 
-            event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
-        fi
+        case "${_provider}" in
+            duck            ) duck-ddns       ;;
+            cloudflare      ) cloudflare-ddns ;;
+            *               )
+                event-log "error" "Unsupported DDNS provider: ${_provider}"
+            ;;
+        esac
+
+        event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
 
         sleep 5m ; continue
     done
@@ -236,9 +232,7 @@ function ddnsd-conf () {
 
 }
 
-function current-ip () {
-    ping -c 1 "$_domain" | awk 'NR==2 {print $5}' | tr -d '():'
-}
+function current-ip () { ping -c 1 "$_domain" | awk 'NR==2 {print $5}' | tr -d '():' ; }
 
 function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
