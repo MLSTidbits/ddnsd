@@ -67,7 +67,6 @@ function monitor-ip-address () {
         [[ "$_current" == "" ]] &&
         event-log "warning" "Failed to retrieve current IP address from $_lookup service"
 
-
         [[ "$_saved" == "$_current" ]] &&
         event-log "info" "No IP address change detected. Current IP: ${_current}"
 
