@@ -311,14 +311,14 @@ Domain Name:            $_domain
 Token Set:              $_token
 IP Address:             $_ip
 
-Service:                $(systemctl is-active --quiet ddnsd.service && echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "$_domain" &> /dev/null && echo "reachable" || echo "unreachable")
+Service:                $(systemctl is-active --quiet ddnsd.service &&
+echo "active" || echo "inactive")
+DDNS Status:            $(ping -c 1 "$_domain" &> /dev/null &&
+echo "reachable" || echo "unreachable")
 
 Lookup Service:         $_lookup
 EOF
 )"
-
-
 
 # shellcheck disable=SC2154
 case "${1}" in
