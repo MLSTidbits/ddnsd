@@ -48,6 +48,8 @@ sudo systemctl daemon-reload
 sudo systemctl enable ddnsd
 ```
 
+**Note**: In order for ddnsd to work correctly, you will need to have `curl` and `jq` installed on your system via your package manager. If the system is using a different INIT system other than systemd, you will need to create your own service file.
+
 ## Configuration
 
 Important: The configuration file is a shell-style file (key=value) located at: `/etc/ddnsd/config`. The script sources this file, so values should be valid shell assignments (no YAML).
