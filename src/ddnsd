@@ -67,8 +67,9 @@ function monitor-ip-address () {
         [[ "$_current" == "" ]] &&
         event-log "warning" "Failed to retrieve current IP address from $_lookup service"
 
-        [[ "$_current" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] &&
-        event-log "info" "Current IP address retrieved: $_current"
+
+        [[ "$_saved" == "$_current" ]] &&
+        event-log "info" "No IP address change detected. Current IP: ${_current}"
 
         if [[ "${_saved}" != "${_current}" ]] ; then
             event-log "info" "IP address changed: ${_saved} -> ${_current}"
@@ -79,9 +80,9 @@ function monitor-ip-address () {
                     event-log "error" "Unsupported DDNS provider: ${_provider}"
                 ;;
             esac
-        fi
 
-        event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
+            event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
+        fi
 
         sleep 5m ; continue
     done
