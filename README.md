@@ -42,7 +42,7 @@ Do the following to install `ddnsd` from source for none Debian-based distributi
 git clone https://github.com/yourusername/ddnsd.git
 cd ddnsd
 sudo install -m 0755 ddnsd /usr/local/bin/ddnsd
-# (copy service file if provided)
+# (copy service file if provided)clear
 sudo cp ddnsd.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable ddnsd
