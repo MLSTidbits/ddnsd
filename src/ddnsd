@@ -243,13 +243,19 @@ function current-ip () { ping -c 1 "$_domain" | awk 'NR==2 {print $5}' | tr -d '
 function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
 # Uncomment for debugging
-set -euox pipefail
+#set -euox pipefail
 
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 _editor="${EDITOR:-nano}"
 
-_config="src/config"
+_config="/etc/${_name}/config"
+
+[[ ! -f "$_config" ]] &&
+event-log "error" "Configuration file $_config not found. Please create it."
+
+source "$_config" 2> /dev/null ||
+event-log "error" "Failed to source configuration file $_config."
 
 # shellcheck disable=SC1090
 source "$_config"
