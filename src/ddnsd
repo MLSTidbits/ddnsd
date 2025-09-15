@@ -149,11 +149,11 @@ function cloudflare-ddns () {
     event-log "error" "$_email Invalid email format for Cloudflare, see $_config"
 
     # Verify that the Cloudflare Zone ID is set
-    [[ "$_id" != "" && "$_id" != "Null" ]] ||
+    [[ "$_zone" != "" && "$_zone" != "Null" ]] ||
     event-log "error" "Cloudflare Zone ID is required, see $_config"
 
     local _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
-    local _idURL="https://api.cloudflare.com/client/v4/zones"
+    local _zoneURL="https://api.cloudflare.com/client/v4/zones"
 
 
     # Check if method is either token or global
@@ -175,20 +175,20 @@ function cloudflare-ddns () {
 
     event-log "info" "Verified Cloudflare API token = ${_verify}"
 
-    local _record=$(curl -s -X GET "$_idURL/$_id/dns_records" \
+    local _record=$(curl -s -X GET "$_zoneURL/$_zone/dns_records" \
         --header "X-Auth-Email: $_email" \
         --header "$_header $_token" \
         --header "Content-Type: application/json" |
-        jq -r '.success[].id')
+         jq -r '.result[] | .id')
 
     [[ -z "$_record" ]] &&
-    event-log "error" "No DNS record found for $_domain in zone $_id"
+    event-log "error" "No DNS record found for $_domain in zone $_zone"
 
-    event-log "info" "Found DNS record for $_domain in zone $_id"
+    event-log "info" "Found DNS record for $_domain in zone $_zone"
 
     local _current="$(check-ip)"
 
-    local _update="$(curl -sS -X PUT "$_idURL/$_id/dns_records/$_record" \
+    local _update="$(curl -sS -X PUT "$_zoneURL/$_zone/dns_records/$_record" \
         --header "X-Auth-Email: $_email" \
         --header "$_header $_token" \
         --header "Content-Type: application/json" \
@@ -243,13 +243,13 @@ function current-ip () { ping -c 1 "$_domain" | awk 'NR==2 {print $5}' | tr -d '
 function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
 # Uncomment for debugging
-# set -euox pipefail
+set -euox pipefail
 
 _name="ddnsd"
 _version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
 _editor="${EDITOR:-nano}"
 
-_config="/etc/ddnsd/config"
+_config="src/config"
 
 # shellcheck disable=SC1090
 source "$_config"
@@ -265,7 +265,7 @@ _token="${TOKEN:-Null}"
 
 _email="${EMAIL:-Null}"
 _method="${METHOD:-token}"
-_id="${ID:-Null}"
+_zone="${ZONE:-Null}"
 _proxy="${PROXY:-false}"
 _ttl="${TTL:-300}"
 
