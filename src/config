@@ -1,3 +1,4 @@
+# shellcheck disable=SC2148
 # What service to use for the IP address lookup. Options are ( ifconfig or icanhaz ):
 #     - ifconfig:  A simple service that returns your public IP address in plain text.
 #     - ipinfo:    A service that provides your public IP address along with additional information
