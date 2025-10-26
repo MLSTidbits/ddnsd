@@ -60,12 +60,20 @@ function monitor-ip-address () {
 
     while true ; do
 
-        # Check if the IP lookup service is set
-        local _current="$(check-ip)"
-        local _saved="$(current-ip)"
+        # [[ "$_current" == "" ]] &&
+        # event-log "warning" "Failed to retrieve current IP address from $_lookup service"
 
-        [[ "$_current" == "" ]] &&
-        event-log "warning" "Failed to retrieve current IP address from $_lookup service"
+        # Sometimes the IP lookup service may be temporarily unavailable do to multiple
+        # reasons. To handle this, we implement a retry mechanism that will keep trying
+        # to fetch the current IP address until it succeeds.
+        while [[ "$_current" == "" ]] ; do
+            sleep 1m
+            local _current="$(check-ip)"
+            [[ "$_current" != "" ]] && break
+            event-log "warning" "Retrying to retrieve current IP address from $_lookup service"
+        done
+
+        local _saved="$(current-ip)"
 
         [[ "$_saved" == "$_current" ]] &&
         event-log "info" "No IP address change detected. Current IP: ${_current}"
@@ -73,11 +81,9 @@ function monitor-ip-address () {
         if [[ "${_saved}" != "${_current}" ]] ; then
             event-log "info" "IP address changed: ${_saved} -> ${_current}"
             case "${_provider}" in
-                duck            ) duck-ddns       ;;
-                cloudflare      ) cloudflare-ddns ;;
-                *               )
-                    event-log "error" "Unsupported DDNS provider: ${_provider}"
-                ;;
+                "duck"       ) duck-ddns                                                   ;;
+                "cloudflare" ) cloudflare-ddns                                             ;;
+                *            ) event-log "error" "Unsupported DDNS provider: ${_provider}" ;;
             esac
 
             event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
@@ -158,10 +164,9 @@ function cloudflare-ddns () {
 
     # Check if method is either token or global
     case "$_method" in
-        "token"                 ) _header="Authorization: Bearer" ;;
-        "global"                ) _header="X-Auth-Key"            ;;
-        *                       )
-            event-log "error" "Unsupported Cloudflare authentication method: $_method"
+        "token"  ) _header="Authorization: Bearer" ;;
+        "global" ) _header="X-Auth-Key"            ;;
+        *        ) event-log "error" "Unsupported Cloudflare authentication method: $_method"
         ;;
     esac
 
