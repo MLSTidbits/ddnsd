@@ -1,6 +1,6 @@
 ---
 title: DDNSD.CONFIG
-section: 8
+section: 5
 header: Configuration
 author: Michael L. Schaecher <MichaelLeeSchaecher@gmail.com>
 footer: DDNSD.CONFIG
@@ -178,7 +178,7 @@ The verbose setting for DuckDNS. If set to _true_, the client will log additiona
 
 # SEE ALSO
 
-_ddnsd_(8)
+`networkctl(8)`, `network(7)`, `networkd.conf(5)`, `networkd.conf.d(5)`, `systemd-networkd(8)`, `systemd-resolved(8)`, `resolv.conf(5)`
 
 # COPYRIGHT
 
