@@ -60,25 +60,17 @@ function monitor-ip-address () {
 
     while true ; do
 
-        # [[ "$_current" == "" ]] &&
-        # event-log "warning" "Failed to retrieve current IP address from $_lookup service"
+        local _current="$(check-ip)"
 
-        # Sometimes the IP lookup service may be temporarily unavailable do to multiple
-        # reasons. To handle this, we implement a retry mechanism that will keep trying
-        # to fetch the current IP address until it succeeds.
-        while [[ "$_current" == "" ]] ; do
-            sleep 1m
-            local _current="$(check-ip)"
-            [[ "$_current" != "" ]] && break
-            event-log "warning" "Retrying to retrieve current IP address from $_lookup service"
-        done
+        [[ "$_current" == "" ]] &&
+        event-log "warning" "Failed to retrieve current IP address from $_lookup service"
 
         local _saved="$(current-ip)"
 
         [[ "$_saved" == "$_current" ]] &&
         event-log "info" "No IP address change detected. Current IP: ${_current}"
 
-        if [[ "${_saved}" != "${_current}" ]] ; then
+        if [[ "${_saved}" != "${_current}" && -n $_current ]] ; then
             event-log "info" "IP address changed: ${_saved} -> ${_current}"
             case "${_provider}" in
                 "duck"       ) duck-ddns                                                   ;;
