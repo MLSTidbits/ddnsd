@@ -6,22 +6,16 @@
 # This program is free software: you can redistribute it and/or modify.
 
 # Check if the script is run as root
-function root-check () {
-    (( "$(id -u)" == 0 )) || echo "This script must be run as root"
-}
+function root-check () { (( "$(id -u)" == 0 )) || event-log "error" "This script must be run as root." ; }
 
 # shellcheck disable=SC2329
 function sign_handler () {
 
-    local _signal="${1:-SIGINT}"
+    local signalHandler="${1:-SIGINT}"
 
-    case "${_signal}" in
-        SIGINT|SIGTERM|SIGQUIT  )
-            event-log "info" "Received signal: ${_signal}. Stopping ddnsd service..."
-        ;;
-        *                       )
-            event-log "warning" "Received unknown signal: ${_signal}"
-        ;;
+    case "$signalHandler" in
+        SIGINT|SIGTERM|SIGQUIT ) event-log "info" "Received $signalHandler. Exiting gracefully..." ;;
+        *                      ) event-log "warning" "Received unknown signal: $signalHandler"     ;;
     esac
 
     exit 0
@@ -35,16 +29,9 @@ function event-log () {
     local _message="${2:-No message provided}"
 
     case "$_event" in
-        info|warning                )
-            logger -t "${_name}" -p user."$_event" "$_message"
-        ;;
-        error|critical              )
-            logger -t "$_name" -p user."$_event" "$_message"
-            exit 1
-        ;;
-        *                           )
-            logger -t "$_name" -p user.unknown "$_message"
-        ;;
+        info|warning   ) logger -t "${appName}" -p user."$_event" "$_message"        ;;
+        error|critical ) logger -t "$appName" -p user."$_event" "$_message" ; exit 1 ;;
+        *              ) logger -t "$appName" -p user.unknown "$_message"            ;;
     esac
 
 }
@@ -54,31 +41,33 @@ function monitor-ip-address () {
 
     root-check
 
-    [[ "$_domain" == "Null" ]] && event-log "error" "Domain Name is required, see $_config"
+    [[ "$domainName" == "Null" ]] && event-log "error" "Domain Name is required, see $appConfig"
 
-    [[ "$_token" == "Null" ]] && event-log "error" "Missing API Token for Cloudflare!"
+    [[ "$apiToken" == "Null" ]] && event-log "error" "Missing API Token for Cloudflare!"
 
     while true ; do
 
-        local _current="$(check-ip)"
+        local currentIP="$(check-ip)"
 
-        [[ "$_current" == "" ]] &&
-        event-log "warning" "Failed to retrieve current IP address from $_lookup service"
+        [[ "$currentIP" == "" ]] &&
+        event-log "warning" "Failed to retrieve current IP address from $ipLookup service"
 
-        local _saved="$(current-ip)"
+        local savedIP="$(current-ip)"
 
-        [[ "$_saved" == "$_current" ]] &&
-        event-log "info" "No IP address change detected. Current IP: ${_current}"
+        [[ "$savedIP" == "$currentIP" ]] &&
+        event-log "info" "No IP address change detected. Current IP: ${currentIP}"
 
-        if [[ "${_saved}" != "${_current}" && -n $_current ]] ; then
-            event-log "info" "IP address changed: ${_saved} -> ${_current}"
-            case "${_provider}" in
+        if [[ "${savedIP}" != "${currentIP}" && -n $currentIP ]] ; then
+
+            event-log "info" "IP address changed: ${savedIP} -> ${currentIP}"
+
+            case "${ddnsProvider}" in
                 "duck"       ) duck-ddns                                                   ;;
                 "cloudflare" ) cloudflare-ddns                                             ;;
-                *            ) event-log "error" "Unsupported DDNS provider: ${_provider}" ;;
+                *            ) event-log "error" "Unsupported DDNS provider: ${ddnsProvider}" ;;
             esac
 
-            event-log "info" "DDNS update completed for ${_domain} with IP ${_current}"
+            event-log "info" "DDNS update completed for ${domainName} with IP ${currentIP}"
         fi
 
         sleep 5m ; continue
@@ -95,8 +84,8 @@ function stop-ddnsd () {
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || echo "No ddnsd process found to stop."
-    rm -f "$_ip" ||
-    event-log "error" "Failed to remove IP address file ${_ip}."
+
+    rm -f "$currentIP" || event-log "error" "Failed to remove IP address file ${currentIP}."
 
     event-log "info" "ddnsd service stopped."
 
@@ -105,100 +94,90 @@ function stop-ddnsd () {
 # shellcheck disable=SC2155
 function duck-ddns () {
 
-    event-log "info" "Configuring DuckDNS for domain $_domain..."
+    local useHTTPS
 
-    local _url="https://www.duckdns.org/update?domains=${_domain}&token=$_token&ip="
+    event-log "info" "Configuring DuckDNS for domain $domainName..."
 
-    [[ "$_verbose" == "" || "$_verbose" == "Null" ]] &&
-    event-log "error" "Verbose setting is required for DuckDNS, see $_config"
+    local duckURL="https://www.duckdns.org/update?domains=${domainName}&token=$apiToken&ip="
 
-    [[ "$_insecure" == "" || "$_insecure" == "Null" ]] &&
-    event-log "error" "Insecure setting is required for DuckDNS, see $_config"
+    [[ "$verboseOutput" == "" || "$verboseOutput" == "Null" ]] &&
+    event-log "error" "Verbose setting is required for DuckDNS, see $appConfig"
 
-    [[ "$_insecure" == "true" ]] && {
-    event-log "warning" "Insecure mode enabled. SSL certificate verification is disabled."
-    _secure="-kk" ; }
+    [[ "$useInsecure" == "true" ]] && { event-log "warning" "DuckDDNS Insecure mode enabled" ; useHTTPS="-kk" ; }
+    [[ "$useInsecure" == "false" ]] && useHTTPS="-k"
 
-    [[ "$_insecure" == "false" ]] && _secure="-k"
+    ddnsResponse="$(curl -s "url=${duckURL}&${verboseOutput}" | grep -oE 'OK|KO')"
 
-    _ddns="$(curl -s "url=${_url}&${_verbose}" | grep -oE 'OK|KO')"
+    [[ "$ddnsResponse" == "OK" ]] && event-log "info" "DuckDNS update successful."
+    [[ "$ddnsResponse" == "KO" ]] && event-log "error" "DuckDNS update failed."
 
-    [[ "$_ddns" == "OK" ]] &&
-    event-log "info" "DuckDNS update successful for domain ${_domain}."
-
-    [[ "$_ddns" == "KO" ]] &&
-    event-log "error" "DuckDNS update failed for domain ${_domain}."
-
-    [[ "$_ddns" != "OK" && "$_ddns" != "KO" ]] &&
-    event-log "error" "Unexpected response from DuckDNS: ${_ddns}"
+    [[ "$ddnsResponse" != "OK" && "$ddnsResponse" != "KO" ]] &&
+    event-log "error" "Unexpected response from DuckDNS: ${ddnsResponse}"
 
 }
 
 # shellcheck disable=SC2155
 function cloudflare-ddns () {
 
-    event-log "info" "Configuring Cloudflare for domain $_domain"
+    event-log "info" "Configuring Cloudflare for domain $domainName"
 
     # Verify that the Cloudflare email set and is in the correct format
-    [[ "$_email" != "" && "$_email" != "Null" ]] ||
-    event-log "error" "Cloudflare email is required, see $_config"
+    [[ "$emailAddress" != "" && "$emailAddress" != "Null" ]] ||
+    event-log "error" "Cloudflare email is required, see $appConfig"
 
-    [[ ! "$_email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] &&
-    event-log "error" "$_email Invalid email format for Cloudflare, see $_config"
+    [[ ! "$emailAddress" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] &&
+    event-log "error" "$emailAddress Invalid email format for Cloudflare, see $appConfig"
 
     # Verify that the Cloudflare Zone ID is set
-    [[ "$_zone" != "" && "$_zone" != "Null" ]] ||
-    event-log "error" "Cloudflare Zone ID is required, see $_config"
+    [[ "$apiZone" != "" && "$apiZone" != "Null" ]] ||
+    event-log "error" "Cloudflare Zone ID is required, see $appConfig"
 
-    local _keyUrl="https://api.cloudflare.com/client/v4/user/tokens/verify"
-    local _zoneURL="https://api.cloudflare.com/client/v4/zones"
+    local tokenURL="https://api.cloudflare.com/client/v4/user/tokens/verify"
+    local apiZoneURL="https://api.cloudflare.com/client/v4/zones"
 
 
     # Check if method is either token or global
-    case "$_method" in
+    case "$methodType" in
         "token"  ) _header="Authorization: Bearer" ;;
         "global" ) _header="X-Auth-Key"            ;;
-        *        ) event-log "error" "Unsupported Cloudflare authentication method: $_method"
+        *        ) event-log "error" "Unsupported Cloudflare authentication method: $methodType"
         ;;
     esac
 
-    local _verify="$(curl -X GET "$_keyUrl" \
-        --header "$_header $_token" \
+    local verifyToken="$(curl -X GET "$tokenURL" \
+        --header "$_header $apiToken" \
         --header "Content-Type:  application/json" |
         jq -r '.result.status')"
 
-    [[ "$_verify" != "active" ]] &&
-    event-log "error" "Cloudflare API token verification failed."
+    [[ "$verifyToken" != "active" ]] && event-log "error" "Cloudflare API token verification failed."
 
-    event-log "info" "Verified Cloudflare API token = ${_verify}"
+    event-log "info" "Verified Cloudflare API token = ${verifyToken}"
 
-    local _record=$(curl -s -X GET "$_zoneURL/$_zone/dns_records" \
-        --header "X-Auth-Email: $_email" \
-        --header "$_header $_token" \
+    local dnsRecords=$(curl -s -X GET "$apiZoneURL/$apiZone/dnsdnsRecordss" \
+        --header "X-Auth-Email: $emailAddress" \
+        --header "$_header $apiToken" \
         --header "Content-Type: application/json" |
          jq -r '.result[] | .id')
 
-    [[ -z "$_record" ]] &&
-    event-log "error" "No DNS record found for $_domain in zone $_zone"
+    [[ -z "$dnsRecords" ]] && event-log "error" "No DNS record found for $domainName in zone $apiZone"
 
-    event-log "info" "Found DNS record for $_domain in zone $_zone"
+    event-log "info" "Found DNS record for $domainName in zone $apiZone"
 
-    local _current="$(check-ip)"
+    local currentIP="$(check-ip)"
 
-    local _update="$(curl -sS -X PUT "$_zoneURL/$_zone/dns_records/$_record" \
-        --header "X-Auth-Email: $_email" \
-        --header "$_header $_token" \
+    local updateDNS="$(curl -sS -X PUT "$apiZoneURL/$apiZone/dnsdnsRecordss/$dnsRecords" \
+        --header "X-Auth-Email: $emailAddress" \
+        --header "$_header $apiToken" \
         --header "Content-Type: application/json" \
         --data "{
             \"type\": \"A\",
-            \"name\": \"${_domain}\",
-            \"content\": \"$_current\",
-            \"ttl\": $_ttl,
-            \"proxied\": $_proxy
+            \"name\": \"${domainName}\",
+            \"content\": \"$currentIP\",
+            \"ttl\": $timeToLive,
+            \"proxied\": $useProxy
         }" | jq -r '.success')"
 
-        test "$_update" = "true" ||
-        event-log "error" "Failed to update Cloudflare DNS record for $_domain"
+        test "$updateDNS" = "true" || event-log "error" "cLOUDFLARE DNS record update failed."
 
     event-log "info" "Cloudflare DNS record updated successfully."
 
@@ -206,18 +185,18 @@ function cloudflare-ddns () {
 
 function check-ip () {
 
-    local _service
+    local lookupService
 
-    case "$_lookup" in
-        "icanhazip"             ) _service="$_lookup.com"   ;;
-        "ipinfo"                ) _service="$_lookup.io/ip" ;;
-        "ifconfig"              ) _service="$_lookup.co"    ;;
-        *                       )
-            event-log "error" "Unsupported IP lookup service: $_lookup"
+    case "$ipLookup" in
+        "icanhazip" ) lookupService="$ipLookup.com"   ;;
+        "ipinfo"    ) lookupService="$ipLookup.io/ip" ;;
+        "ifconfig"  ) lookupService="$ipLookup.co"    ;;
+        *           )
+            event-log "error" "Unsupported IP lookup service: $ipLookup"
         ;;
     esac
 
-    curl -s "https://$_service"
+    curl -s "https://$lookupService"
 }
 
 function ddnsd-conf () {
@@ -226,69 +205,69 @@ function ddnsd-conf () {
     # if check fails then rerun the script with sudo.
     root-check
 
-    if $_editor "$_config" ; then
-        event-log "info" "Configuration file $_config edited successfully."
+    if $defaultEditor "$appConfig" ; then
+        event-log "info" "Configuration file $appConfig edited successfully."
     else
-        echo "Failed to open configuration file in ${_editor}."
-        event-log "error" "Failed to open configuration file in ${_editor}."
+        echo "Failed to open configuration file in ${defaultEditor}."
+        event-log "error" "Failed to open configuration file in ${defaultEditor}."
     fi
 
 }
 
-function current-ip () { ping -c 1 "$_domain" | awk 'NR==2 {print $5}' | tr -d '():' ; }
+function current-ip () { ping -c 1 "$domainName" | awk 'NR==2 {print $5}' | tr -d '():' ; }
 
 function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
 # Uncomment for debugging
 #set -euox pipefail
 
-_name="ddnsd"
-_version="$(cat /usr/share/doc/${_name}/version 2>/dev/null || echo "unknown")"
-_editor="${EDITOR:-nano}"
+appName="ddnsd"
+appVersion="$(cat /usr/share/doc/${appName}/version 2>/dev/null || echo "unknown")"
+defaultEditor="${EDITOR:-nano}"
 
-_config="/etc/${_name}/config"
+appConfig="/etc/${appName}/config"
 
-[[ ! -f "$_config" ]] &&
-event-log "error" "Configuration file $_config not found. Please create it."
+[[ ! -f "$appConfig" ]] &&
+event-log "error" "Configuration file $appConfig not found. Please create it."
 
-source "$_config" 2> /dev/null ||
-event-log "error" "Failed to source configuration file $_config."
+source "$appConfig" 2> /dev/null ||
+event-log "error" "Failed to source configuration file $appConfig."
 
 # shellcheck disable=SC1090
-source "$_config"
+source "$appConfig"
 
 ### Global Configuration Variables ###
 
-_lookup="${LOOKUP:-icanhazip}"
-_provider="${PROVIDER:-duckdns}"
-_domain="${DOMAIN:-Null}"
-_token="${TOKEN:-Null}"
+ipLookup="${LOOKUP:-icanhazip}"
+ddnsProvider="${PROVIDER:-duckdns}"
+domainName="${DOMAIN:-Null}"
+apiToken="${TOKEN:-Null}"
 
 ### Cloudflare Specific Configuration Variables ###
 
-_email="${EMAIL:-Null}"
-_method="${METHOD:-token}"
-_zone="${ZONE:-Null}"
-_proxy="${PROXY:-false}"
-_ttl="${TTL:-300}"
+emailAddress="${EMAIL:-Null}"
+methodType="${METHOD:-token}"
+apiZone="${ZONE:-Null}"
+useProxy="${PROXY:-false}"
+timeToLive="${TTL:-300}"
 
 ### DuckDNS Specific Configuration Variables ###
 
-_insecure="${INSECURE:-false}"
-_verbose="${VERBOSE:-false}"
+useInsecure="${INSECURE:-false}"
+verboseOutput="${VERBOSE:-false}"
 
 # Trap errors and log them
 trap sign_handler SIGINT SIGTERM SIGQUIT
 
-_versionInfo="$(cat <<EOF
-${_name} - [ Version: ${_version} ] - License: GPLv3.0"
+versionInfo="$(cat <<EOF
+${appName} - [ Version: ${appVersion} ] - License: GPLv3.0"
 EOF
 )"
 
-_helpInfo="$(cat <<EOF
-${_versionInfo}
+helpInfo="$(cat <<EOF
+${versionInfo}
 
-Usage: ${_name} [start|stop|restart|status|config|help|version]
+Usage: ${appName} [start|stop|restart|status|config|help|version]
 
 Options:
     start           Start monitoring for IP changes and update DDNS
@@ -299,43 +278,40 @@ Options:
     help            Show this help message
     version         Show version information
 
-Version: ${_version}
+Version: ${appVersion}
 EOF
 )"
 
-[[ "$(check-ip)" != "$(current-ip)" ]] && _ip="$(current-ip) OUTDATED"
-[[ "$(check-ip)" == "$(current-ip)" ]] && _ip="$(current-ip) CURRENT"
+[[ "$(check-ip)" != "$(current-ip)" ]] && currentIP="$(current-ip) OUTDATED"
+[[ "$(check-ip)" == "$(current-ip)" ]] && currentIP="$(current-ip) CURRENT"
 
-_statusInfo="$(cat <<EOF
-${_versionInfo}
+statusInfo="$(cat <<EOF
+${versionInfo}
 
-DDNS Provider:          $_provider
-Domain Name:            $_domain
-Token Set:              $_token
-IP Address:             $_ip
+DDNS Provider:          $ddnsProvider
+Domain Name:            $domainName
+Token Set:              $apiToken
+IP Address:             $currentIP
 
 Service:                $(systemctl is-active --quiet ddnsd.service &&
 echo "active" || echo "inactive")
-DDNS Status:            $(ping -c 1 "$_domain" &> /dev/null &&
+DDNS Status:            $(ping -c 1 "$domainName" &> /dev/null &&
 echo "reachable" || echo "unreachable")
 
-Lookup Service:         $_lookup
+Lookup Service:         $ipLookup
 EOF
 )"
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start                       ) monitor-ip-address     ;;
-    stop                        ) stop-ddnsd             ;;
-    restart                     ) restart-ddnsd          ;;
-    status                      ) echo "${_statusInfo}"  ;;
-    config                      ) ddnsd-conf "$@"        ;;
-    help                        ) echo "${_helpInfo}"    ;;
-    version                     ) echo "${_versionInfo}" ;;
-    *                           )
-        echo "Invalid option: ${1}"
-        echo "Use '${_name} help' for usage information."
-        exit 1
+    start   ) monitor-ip-address                                                            ;;
+    stop    ) stop-ddnsd                                                                    ;;
+    restart ) restart-ddnsd                                                                 ;;
+    status  ) echo "$statusInfo"                                                            ;;
+    config  ) ddnsd-conf "$@"                                                               ;;
+    help    ) echo "$helpInfo"                                                              ;;
+    version ) echo "$versionInfo"                                                           ;;
+    *       ) event-log "info" "Invalid option: ${1:-none}" ; event-log "error" "$helpInfo" ;;
 esac
 
 exit 0
