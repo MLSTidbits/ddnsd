@@ -13,7 +13,7 @@ Rules-Requires-Root: no
 Package: ddnsd
 Architecture: any
 Depends:
- curl, nano, systemd, jq
+ curl, nano, systemd
 Description: Dynamic DNS client for updating DNS records
  ddnsd is a dynamic DNS client that updates DNS records based on the current
  public IP address of the system. It supports multiple DNS providers and can
