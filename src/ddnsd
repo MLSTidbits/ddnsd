@@ -62,8 +62,8 @@ function monitor-ip-address () {
             event-log "info" "IP address changed: ${savedIP} -> ${currentIP}"
 
             case "${ddnsProvider}" in
-                "duck"       ) duck-ddns                                                   ;;
-                "cloudflare" ) cloudflare-ddns                                             ;;
+                "duck"       ) duck-ddns                                                      ;;
+                "cloudflare" ) cloudflare-ddns                                                ;;
                 *            ) event-log "error" "Unsupported DDNS provider: ${ddnsProvider}" ;;
             esac
 
@@ -153,7 +153,7 @@ function cloudflare-ddns () {
 
     event-log "info" "Verified Cloudflare API token = ${verifyToken}"
 
-    local dnsRecords=$(curl -s -X GET "$apiZoneURL/$apiZone/dnsdnsRecordss" \
+    local dnsRecords=$(curl -s -X GET "$apiZoneURL/$apiZone/dns_records?type=A&name=${domainName}" \
         --header "X-Auth-Email: $emailAddress" \
         --header "$_header $apiToken" \
         --header "Content-Type: application/json" |
@@ -165,7 +165,7 @@ function cloudflare-ddns () {
 
     local currentIP="$(check-ip)"
 
-    local updateDNS="$(curl -sS -X PUT "$apiZoneURL/$apiZone/dnsdnsRecordss/$dnsRecords" \
+    local updateDNS="$(curl -sS -X PUT "$apiZoneURL/$apiZone/dns_records/$dnsRecords" \
         --header "X-Auth-Email: $emailAddress" \
         --header "$_header $apiToken" \
         --header "Content-Type: application/json" \
