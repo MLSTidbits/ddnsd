@@ -29,9 +29,9 @@ function event-log () {
     local _message="${2:-No message provided}"
 
     case "$_event" in
-        info|warning   ) logger -t "${appName}" -p user."$_event" "$_message"        ;;
-        error|critical ) logger -t "$appName" -p user."$_event" "$_message" ; exit 1 ;;
-        *              ) logger -t "$appName" -p user.unknown "$_message"            ;;
+        info|warning|error ) logger -t "${appName}" -p user."$_event" "$_message"        ;;
+        critical           ) logger -t "$appName" -p user.critical "$_message" ; exit 1  ;;
+        *                  ) logger -t "$appName" -p user.unknown "$_message"            ;;
     esac
 
 }
