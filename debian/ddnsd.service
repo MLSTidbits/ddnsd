@@ -7,6 +7,8 @@ Type = simple
 LogLevelMax = notice
 EnvironmentFile = /etc/ddnsd/config
 ExecStart = /usr/bin/ddnsd start
+Restart = on-failure
+RestartSec = 10s
 
 [Install]
 WantedBy = multi-user.target
