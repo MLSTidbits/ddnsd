@@ -111,6 +111,9 @@ function duck-ddns () {
     [[ "$ddnsResponse" == "OK" ]] && event-log "info" "DuckDNS update successful."
     [[ "$ddnsResponse" == "KO" ]] && event-log "error" "DuckDNS update failed."
 
+    # DuckDNS is hosted on AWS and has experienced outages in the past, so it's
+    # possible that a failed update is due to an issue with the DuckDNS service
+    # rather than local configuration issues.
     [[ "$ddnsResponse" != "OK" && "$ddnsResponse" != "KO" ]] &&
     event-log "error" "Unexpected response from DuckDNS: ${ddnsResponse}"
 
@@ -177,7 +180,9 @@ function cloudflare-ddns () {
             \"proxied\": $useProxy
         }" | jq -r '.success')"
 
-        test "$updateDNS" = "true" || event-log "error" "cLOUDFLARE DNS record update failed."
+    # Log error if updating the DNS record failed because this may not be due local config
+    # issues such as incorrect API token, email, zone ID, or domain name.
+    test "$updateDNS" = "true" || event-log "error" "cLOUDFLARE DNS record update failed."
 
     event-log "info" "Cloudflare DNS record updated successfully."
 
