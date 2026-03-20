@@ -85,8 +85,6 @@ function stop-ddnsd () {
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || echo "No ddnsd process found to stop."
 
-    rm -f "$currentIP" || event-log "error" "Failed to remove IP address file ${currentIP}."
-
     event-log "info" "ddnsd service stopped."
 
 }
@@ -103,19 +101,21 @@ function duck-ddns () {
     [[ "$verboseOutput" == "" || "$verboseOutput" == "Null" ]] &&
     event-log "error" "Verbose setting is required for DuckDNS, see $appConfig"
 
-    [[ "$useInsecure" == "true" ]] && { event-log "warning" "DuckDDNS Insecure mode enabled" ; useHTTPS="-kk" ; }
-    [[ "$useInsecure" == "false" ]] && useHTTPS="-k"
+    [[ "$useInsecure" == "true" ]] && { event-log "warning" "DuckDDNS Insecure mode enabled" ; useHTTPS="--insecure" ; }
+    [[ "$useInsecure" == "false" ]] && useHTTPS=""
 
-    ddnsResponse="$(curl -s "url=${duckURL}&${verboseOutput}" | grep -oE 'OK|KO')"
+    ddnsResponse="$(curl -s $useHTTPS "${duckURL}&verbose=${verboseOutput}" | grep -oE 'OK|KO')"
 
-    [[ "$ddnsResponse" == "OK" ]] && event-log "info" "DuckDNS update successful."
-    [[ "$ddnsResponse" == "KO" ]] && event-log "error" "DuckDNS update failed."
-
-    # DuckDNS is hosted on AWS and has experienced outages in the past, so it's
-    # possible that a failed update is due to an issue with the DuckDNS service
-    # rather than local configuration issues.
-    [[ "$ddnsResponse" != "OK" && "$ddnsResponse" != "KO" ]] &&
-    event-log "error" "Unexpected response from DuckDNS: ${ddnsResponse}"
+    if [[ "$ddnsResponse" == "OK" ]] ; then
+        event-log "info" "DuckDNS update successful."
+    elif [[ "$ddnsResponse" == "KO" ]] ; then
+        event-log "error" "DuckDNS update failed."
+    else
+        # DuckDNS is hosted on AWS and has experienced outages in the past, so it's
+        # possible that a failed update is due to an issue with the DuckDNS service
+        # rather than local configuration issues.
+        event-log "error" "Unexpected response from DuckDNS: ${ddnsResponse}"
+    fi
 
 }
 
@@ -182,9 +182,11 @@ function cloudflare-ddns () {
 
     # Log error if updating the DNS record failed because this may not be due local config
     # issues such as incorrect API token, email, zone ID, or domain name.
-    test "$updateDNS" = "true" || event-log "error" "cLOUDFLARE DNS record update failed."
-
-    event-log "info" "Cloudflare DNS record updated successfully."
+    if test "$updateDNS" = "true" ; then
+        event-log "info" "Cloudflare DNS record updated successfully."
+    else
+        event-log "error" "Cloudflare DNS record update failed."
+    fi
 
 }
 
