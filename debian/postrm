@@ -3,19 +3,26 @@
 set -e
 
 case "$1" in
-    remove|purge|upgrade    )
-        [ -d /run/systemd/system ] && {
-        systemctl --system daemon-reload >/dev/null || true ; }
+    configure|upgrade                            )
+        deb-systemd-helper unmask 'ddnsd.service' >/dev/null || true
+        if deb-systemd-helper --quiet was-enabled 'ddnsd.service'; then
+            deb-systemd-helper enable 'ddnsd.service' >/dev/null || true
+        else
+            deb-systemd-helper update-state 'ddnsd.service' >/dev/null || true
+        fi
 
+        # Reload systemd and start or restart services
+        # shellcheck disable=SC2086
+        if [ -d /run/systemd/system ]; then
+            systemctl --system daemon-reload >/dev/null || true
+            [ -n "$2" ] && _dh_action=restart || _dh_action=start
+            deb-systemd-invoke $_dh_action 'ddnsd.service' >/dev/null || true
+        fi
 
-        [ -x "/usr/bin/deb-systemd-helper" ] && {
-        deb-systemd-helper stop 'ddnsd.service' >/dev/null || true ; }
-
-        [ -x "/usr/bin/deb-systemd-helper" ] && {
-        deb-systemd-helper purge 'ddnsd.service' >/dev/null || true
-        deb-systemd-helper unmask 'ddnsd.service' >/dev/null || true ; }
     ;;
-    failed-upgrade  ) ;;
-    *               ) echo "Unsupported option $1" >&2 ; exit 1 ;;
+    failed-upgrade                               ) ;;
+    abort-upgrade|abort-deconfigure|abort-remove ) ;;
+    *                                            )
+        echo "Unsupported option $1" ; exit 1
+    ;;
 esac
-
