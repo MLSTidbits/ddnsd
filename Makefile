@@ -1,6 +1,6 @@
 .PHONY: all clean install _pandoc _out
 
-APPLICATION = $(basename $(shell pwd))
+APPLICATION = $(shell pwd | xargs basename)
 VERSION = $(shell cat doc/version)
 
 BUILD_DIR = _build
@@ -28,31 +28,39 @@ _pandoc:
 
 
 _out:
-	mkdir -p $(BUILD_DIR)/doc \
+	@mkdir -p $(BUILD_DIR)/doc
 
-	@cp -rv $(SOURCE_DIR)/* $(BUILD_DIR)/
+	@for file in $(SOURCE_DIR)/*; do \
+		if [ -f "$$file" ]; then \
+			cp -rf "$$file" "$(BUILD_DIR)/"; \
+		fi; \
+	done
 
-	@cp -v $(DOC_DIR)/version $(DOC_DIR)/copyright README.md CONTRIBUTING.md CODE_OF_CONDUCT.md \
+	@cp -r $(SOURCE_DIR)/completion $(BUILD_DIR)/
+
+	@cp -f $(DOC_DIR)/version $(DOC_DIR)/copyright README.md CONTRIBUTING.md CODE_OF_CONDUCT.md \
 		$(BUILD_DIR)/$(DOC_DIR)/
-
 clean:
-	rm -rvf $(BUILD_DIR)
+	@echo "cleaning: removing $(BUILD_DIR) directory..."
+	@rm -rf $(BUILD_DIR)
 
 install:
-	@install -Dm755 $(SOURCE_DIR)/$(APPLICATION) /usr/bin/$(APPLICATION)
+	@install -Dm755 $(BUILD_DIR)/$(APPLICATION) /usr/bin/
 
 # Install the /etc configuration file if it doesn't exist
 	@if [ ! -f /etc/default/grub_btrfsd ] && [ ! -f /etc/grub.d/41_grub_btrfsd ]; then \
 		echo "Installing default configuration file"; \
-		install -Dm644 $(SOURCE_DIR)/conf/grub_btrfsd /etc/default/grub_btrfsd; \
-		install -Dm644 $(SOURCE_DIR)/conf/41_grub_btrfsd /etc/grub.d/41_grub_btrfsd; \
+		install -Dm644 $(BUILD_DIR)/config /etc/ddnsd/; \
 	fi
 
-	@install -Dm644 $(BUILD_DIR)/$(MAN_DIR)/$(APPLICATION).1 /usr/share/man/man1/$(APPLICATION).1
-	@gzip -9 /usr/share/man/man1/$(APPLICATION).1
+	@for manpage in $(BUILD_DIR)/$(MAN_DIR)/*; do \
+		section=$$(echo "$$manpage" | sed 's/.*\.\([0-9]\+\)$$/\1/'); \
+		dest=/usr/share/man/man$$section/$$(basename $$manpage); \
+		install -Dm644 "$$manpage" "$$dest"; \
+		gzip -9 -f "$$dest"; \
+	done
 
-	@install -Dm644 $(BUILD_DIR)/$(MAN_DIR)/$(APPLICATION).conf.5 /usr/share/man/man5/$(APPLICATION).conf.5
-	@gzip -9 /usr/share/man/man5/$(APPLICATION).conf.5
-
-	@install -Dm644 $(DOC_DIR)/version $(DOC_DIR)/copyright README.md CONTRIBUTING.md CODE_OF_CONDUCT.md \
-		/usr/share/doc/$(APPLICATION)/
+	@for docs in $(BUILD_DIR)/$(DOC_DIR)/*; do \
+		dest=/usr/share/doc/$(APPLICATION)/$$(basename $$docs); \
+		install -Dm644 "$$docs" "$$dest"; \
+	done
