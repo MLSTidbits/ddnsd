@@ -18,8 +18,9 @@ debian/*.debhelper
 debian/*.substvars
 debian/ddnsd/
 debian/ddnsd-docs/
-debian/ddnsd-man/
 
 doc/version
 
 _build/
+
+CLAUDE.md
