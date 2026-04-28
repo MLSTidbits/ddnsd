@@ -17,7 +17,9 @@ debian/*.ex
 debian/*.debhelper
 debian/*.substvars
 debian/ddnsd/
+debian/ddnsd-docs/
 
 doc/version
 man/ddnsd.1
 man/ddnsd.conf.5
+
