@@ -67,6 +67,7 @@ function monitor-ip-address () {
                 *            ) event-log "error" "Unsupported DDNS provider: ${ddnsProvider}" ;;
             esac
 
+            save-ip "$currentIP"
             event-log "info" "DDNS update completed for ${domainName} with IP ${currentIP}"
         fi
 
@@ -84,6 +85,8 @@ function stop-ddnsd () {
 
     # Stop the ddnsd service and all instances of ddnsd
     pkill -f ddnsd || echo "No ddnsd process found to stop."
+
+    rm -f "$ipStateFile" || event-log "warning" "Failed to remove state file ${ipStateFile}."
 
     event-log "info" "ddnsd service stopped."
 
@@ -221,7 +224,9 @@ function ddnsd-conf () {
 
 }
 
-function current-ip () { ping -c 1 "$domainName" | awk 'NR==2 {print $5}' | tr -d '():' ; }
+function current-ip () { cat "$ipStateFile" 2>/dev/null || echo "" ; }
+
+function save-ip () { echo "${1}" > "$ipStateFile" ; }
 
 function restart-ddnsd () { root-check ; systemctl restart ddnsd.service ; }
 
@@ -233,6 +238,7 @@ appVersion="$(cat /usr/share/doc/${appName}/version 2>/dev/null || echo "unknown
 defaultEditor="${EDITOR:-nano}"
 
 appConfig="/etc/${appName}/config"
+ipStateFile="/var/lib/${appName}/current_ip"
 
 [[ ! -f "$appConfig" ]] &&
 event-log "error" "Configuration file $appConfig not found. Please create it."
@@ -242,6 +248,9 @@ event-log "error" "Failed to source configuration file $appConfig."
 
 # shellcheck disable=SC1090
 source "$appConfig"
+
+# Ensure state directory exists
+mkdir -p "/var/lib/${appName}" || event-log "critical" "Failed to create state directory /var/lib/${appName}."
 
 ### Global Configuration Variables ###
 
