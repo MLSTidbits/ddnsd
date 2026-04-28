@@ -6,7 +6,7 @@
 # This program is free software: you can redistribute it and/or modify.
 
 # Check if the script is run as root
-function root-check () { (( "$(id -u)" == 0 )) || event-log "error" "This script must be run as root." ; }
+function root-check () { (( "$(id -u)" == 0 )) || event-log "critical" "This script must be run as root." ; }
 
 # shellcheck disable=SC2329
 function sign_handler () {
@@ -41,9 +41,9 @@ function monitor-ip-address () {
 
     root-check
 
-    [[ "$domainName" == "Null" ]] && event-log "error" "Domain Name is required, see $appConfig"
+    [[ "$domainName" == "Null" ]] && event-log "critical" "Domain Name is required, see $appConfig"
 
-    [[ "$apiToken" == "Null" ]] && event-log "error" "Missing API Token for Cloudflare!"
+    [[ "$apiToken" == "Null" ]] && event-log "critical" "Missing API Token for Cloudflare!"
 
     while true ; do
 
@@ -101,13 +101,15 @@ function duck-ddns () {
 
     local duckURL="https://www.duckdns.org/update?domains=${domainName}&token=$apiToken&ip="
 
-    [[ "$verboseOutput" == "" || "$verboseOutput" == "Null" ]] &&
-    event-log "error" "Verbose setting is required for DuckDNS, see $appConfig"
+    if [[ "$verboseOutput" == "" || "$verboseOutput" == "Null" ]] ; then
+        event-log "error" "Verbose setting is required for DuckDNS, see $appConfig"
+        return 1
+    fi
 
     [[ "$useInsecure" == "true" ]] && { event-log "warning" "DuckDDNS Insecure mode enabled" ; useHTTPS="--insecure" ; }
     [[ "$useInsecure" == "false" ]] && useHTTPS=""
 
-    ddnsResponse="$(curl -s $useHTTPS "${duckURL}&verbose=${verboseOutput}" | grep -oE 'OK|KO')"
+    local ddnsResponse="$(curl -s $useHTTPS "${duckURL}&verbose=${verboseOutput}" | grep -oE 'OK|KO')"
 
     if [[ "$ddnsResponse" == "OK" ]] ; then
         event-log "info" "DuckDNS update successful."
@@ -128,25 +130,34 @@ function cloudflare-ddns () {
     event-log "info" "Configuring Cloudflare for domain $domainName"
 
     # Verify that the Cloudflare email set and is in the correct format
-    [[ "$emailAddress" != "" && "$emailAddress" != "Null" ]] ||
-    event-log "error" "Cloudflare email is required, see $appConfig"
+    if [[ "$emailAddress" == "" || "$emailAddress" == "Null" ]] ; then
+        event-log "error" "Cloudflare email is required, see $appConfig"
+        return 1
+    fi
 
-    [[ ! "$emailAddress" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] &&
-    event-log "error" "$emailAddress Invalid email format for Cloudflare, see $appConfig"
+    if [[ ! "$emailAddress" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] ; then
+        event-log "error" "$emailAddress Invalid email format for Cloudflare, see $appConfig"
+        return 1
+    fi
 
     # Verify that the Cloudflare Zone ID is set
-    [[ "$apiZone" != "" && "$apiZone" != "Null" ]] ||
-    event-log "error" "Cloudflare Zone ID is required, see $appConfig"
+    if [[ "$apiZone" == "" || "$apiZone" == "Null" ]] ; then
+        event-log "error" "Cloudflare Zone ID is required, see $appConfig"
+        return 1
+    fi
 
     local tokenURL="https://api.cloudflare.com/client/v4/user/tokens/verify"
     local apiZoneURL="https://api.cloudflare.com/client/v4/zones"
 
 
     # Check if method is either token or global
+    local _header
     case "$methodType" in
         "token"  ) _header="Authorization: Bearer" ;;
         "global" ) _header="X-Auth-Key"            ;;
-        *        ) event-log "error" "Unsupported Cloudflare authentication method: $methodType"
+        *        )
+            event-log "error" "Unsupported Cloudflare authentication method: $methodType"
+            return 1
         ;;
     esac
 
@@ -155,7 +166,10 @@ function cloudflare-ddns () {
         --header "Content-Type:  application/json" |
         jq -r '.result.status')"
 
-    [[ "$verifyToken" != "active" ]] && event-log "error" "Cloudflare API token verification failed."
+    if [[ "$verifyToken" != "active" ]] ; then
+        event-log "error" "Cloudflare API token verification failed."
+        return 1
+    fi
 
     event-log "info" "Verified Cloudflare API token = ${verifyToken}"
 
@@ -165,7 +179,10 @@ function cloudflare-ddns () {
         --header "Content-Type: application/json" |
          jq -r '.result[] | .id')
 
-    [[ -z "$dnsRecords" ]] && event-log "error" "No DNS record found for $domainName in zone $apiZone"
+    if [[ -z "$dnsRecords" ]] ; then
+        event-log "error" "No DNS record found for $domainName in zone $apiZone"
+        return 1
+    fi
 
     event-log "info" "Found DNS record for $domainName in zone $apiZone"
 
@@ -241,13 +258,11 @@ appConfig="/etc/${appName}/config"
 ipStateFile="/var/lib/${appName}/current_ip"
 
 [[ ! -f "$appConfig" ]] &&
-event-log "error" "Configuration file $appConfig not found. Please create it."
-
-source "$appConfig" 2> /dev/null ||
-event-log "error" "Failed to source configuration file $appConfig."
+event-log "critical" "Configuration file $appConfig not found. Please create it."
 
 # shellcheck disable=SC1090
-source "$appConfig"
+source "$appConfig" ||
+event-log "critical" "Failed to source configuration file $appConfig."
 
 # Ensure state directory exists
 mkdir -p "/var/lib/${appName}" || event-log "critical" "Failed to create state directory /var/lib/${appName}."
@@ -320,14 +335,17 @@ EOF
 
 # shellcheck disable=SC2154
 case "${1}" in
-    start   ) monitor-ip-address                                                            ;;
-    stop    ) stop-ddnsd                                                                    ;;
-    restart ) restart-ddnsd                                                                 ;;
-    status  ) echo "$statusInfo"                                                            ;;
-    config  ) ddnsd-conf "$@"                                                               ;;
-    help    ) echo "$helpInfo"                                                              ;;
-    version ) echo "$versionInfo"                                                           ;;
-    *       ) event-log "info" "Invalid option: ${1:-none}" ; event-log "error" "$helpInfo" ;;
+    start   ) monitor-ip-address  ;;
+    stop    ) stop-ddnsd          ;;
+    restart ) restart-ddnsd       ;;
+    status  ) echo "$statusInfo"  ;;
+    config  ) ddnsd-conf "$@"     ;;
+    help    ) echo "$helpInfo"    ;;
+    version ) echo "$versionInfo" ;;
+    *       )
+        event-log "info" "Invalid option: ${1:-none}"
+        event-log "error" "$helpInfo"
+    ;;
 esac
 
 exit 0
