@@ -19,8 +19,6 @@ debian/*.substvars
 debian/ddnsd/
 debian/ddnsd-docs/
 
-doc/version
-
 _build/
 
 CLAUDE.md
