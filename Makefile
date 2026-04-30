@@ -1,4 +1,4 @@
-.PHONY: all clean install _pandoc _out
+.PHONY: all clean install hooks-install _pandoc _out
 
 APPLICATION = $(shell pwd | xargs basename)
 VERSION = $(shell cat doc/version)
@@ -40,6 +40,7 @@ _out:
 
 	@cp -f $(DOC_DIR)/version $(DOC_DIR)/copyright README.md CONTRIBUTING.md CODE_OF_CONDUCT.md \
 		$(BUILD_DIR)/$(DOC_DIR)/
+
 clean:
 	@echo "cleaning: removing $(BUILD_DIR) directory..."
 	@rm -rf $(BUILD_DIR)

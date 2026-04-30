@@ -2,7 +2,7 @@
   "output": "CHANGELOG.md",
   "template": "compact",
   "commitLimit": false,
-  "commitPattern": "^(feat:|feature:|docs:|fix:|revert:|docs:|bump:|BREAKING CHANGE:)",
+  "commitPattern": "^(feat:|feature:|docs:|fix:|revert:|docs:|bump:|BREAKING CHANGE:|refactor:)",
   "hideCredit": false,
   "startingVersion": "0.1",
   "hideEmptyReleases": true
