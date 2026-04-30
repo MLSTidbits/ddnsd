@@ -40,7 +40,9 @@ The configuration file is located at _/etc/ddnsd.conf_.
 
 ## `IP_LOOKUP`
 
-The method to use for looking up the current public IP address. Valid values are _icanhazip_, _ipinfo_ or _ifconfig_. These services return the public IP address of the host running the DDNSD client.
+The method to use for looking up the current public IP address. Valid values are _icanhazip_, _ipinfo_, _ifconfig_, or _dns_.
+
+The HTTP-based options (_icanhazip_, _ipinfo_, _ifconfig_) query external web services over HTTPS. The _dns_ option uses OpenDNS via `dig` and does not require HTTP, making it useful when web-based lookup services are blocked or unavailable. Requires the `dnsutils` package.
 
 ---
 
@@ -48,7 +50,7 @@ Default: _icanhazip_
 
 ---
 
-: Example: _IP_LOOKUP=ipinfo_
+: Example: _IP_LOOKUP=dns_
 
 ## `DDNS_PROVIDER`
 
