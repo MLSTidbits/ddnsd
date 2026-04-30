@@ -14,7 +14,7 @@ Package: ddnsd
 Architecture: any
 Depends:
  curl, nano, systemd, dnsutils
-Conflicts: ddnsd (>= 2.7.2)
+Conflicts: ddnsd (>= 2.7.2), ddnsd-man
 Description: Dynamic DNS client for updating DNS records
  ddnsd is a dynamic DNS client that updates DNS records based on the current
  public IP address of the system. It supports multiple DNS providers and can
