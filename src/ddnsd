@@ -211,19 +211,13 @@ function cloudflare-ddns () {
 }
 
 function check-ip () {
-
-    local lookupService
-
     case "$ipLookup" in
-        "icanhazip" ) lookupService="$ipLookup.com"   ;;
-        "ipinfo"    ) lookupService="$ipLookup.io/ip" ;;
-        "ifconfig"  ) lookupService="$ipLookup.co"    ;;
-        *           )
-            event-log "error" "Unsupported IP lookup service: $ipLookup"
-        ;;
+        "icanhazip" ) curl -s "https://icanhazip.com"                              ;;
+        "ipinfo"    ) curl -s "https://ipinfo.io/ip"                               ;;
+        "ifconfig"  ) curl -s "https://ifconfig.co"                                ;;
+        "dns"       ) dig +short myip.opendns.com @resolver1.opendns.com           ;;
+        *           ) event-log "error" "Unsupported IP lookup service: $ipLookup" ;;
     esac
-
-    curl -s "https://$lookupService"
 }
 
 function ddnsd-conf () {

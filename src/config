@@ -1,11 +1,12 @@
 # shellcheck disable=SC2148
-# What service to use for the IP address lookup. Options are ( ifconfig or icanhaz ):
-#     - ifconfig:  A simple service that returns your public IP address in plain text.
-#     - ipinfo:    A service that provides your public IP address along with additional information
-#                  such as location and ISP.
-#     - icanhazip: A popular service that returns your public IP address in plain text.
-# Default: icanhazip.]
-#LOOKUP=icanhazip
+# What service to use for the IP address lookup:
+#     - icanhazip: A popular HTTP service that returns your public IP in plain text.
+#     - ipinfo:    HTTP service providing your public IP along with location and ISP info.
+#     - ifconfig:  Simple HTTP service returning your public IP in plain text.
+#     - dns:       DNS-based lookup via OpenDNS (no HTTP required). Requires dig (dnsutils).
+#                  Useful when HTTP lookup services are blocked or unavailable.
+# Default: dns
+#LOOKUP=dns
 
 # This setting specifies which dynamic DNS provider to use. You can choose between
 # cloudflare and duckdns.
