@@ -23,7 +23,7 @@ Description: Dynamic DNS client for updating DNS records
  It uses an external IP lookup service to determine the current public IP
  address and updates the DNS records accordingly.
 
-Package: ddnsd-man
+Package: ddnsd-docs
 Architecture: all
 Depends: ddnsd, ddnsd-docs
 Description: Manual pages for ddnsd
