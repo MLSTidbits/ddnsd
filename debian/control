@@ -13,7 +13,7 @@ Rules-Requires-Root: no
 Package: ddnsd
 Architecture: any
 Depends:
- curl, nano, systemd
+ curl, nano, systemd, dnsutils
 Conflicts: ddnsd (>= 2.7.2)
 Description: Dynamic DNS client for updating DNS records
  ddnsd is a dynamic DNS client that updates DNS records based on the current
@@ -22,13 +22,6 @@ Description: Dynamic DNS client for updating DNS records
  .
  It uses an external IP lookup service to determine the current public IP
  address and updates the DNS records accordingly.
-
-Package: ddnsd-docs
-Architecture: all
-Depends: ddnsd, ddnsd-man
-Description: Documentation for ddnsd
- This package contains the documentation for ddnsd, including README.md and
- other relevant files that provide information.
 
 Package: ddnsd-man
 Architecture: all
